@@ -1,4 +1,3 @@
-// Parse a number (integer or decimal) starting at index i
 const parseNumber = (code, startIndex) => {
   let i = startIndex;
   let numberStr = '';
