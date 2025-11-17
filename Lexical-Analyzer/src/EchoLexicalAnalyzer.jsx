@@ -148,11 +148,28 @@ const LexicalAnalyzerTemplate = () => {
 
       // TODO: Add logic for:
       // - String literals
+
       // - Numbers (integers and decimals)
+
       // - Identifiers and keywords (case-insensitive)
+            if(/[a-zA-Z_]/.test(char)){
+        let lexeme = '';
+          while (i < code.length && /[a-zA-Z0-9_]/.test(code[i])){
+            lexeme += code[i];
+            i++;
+          }
+          const lowercaseLexeme = lexeme.toLowerCase();
+          const type = KEYWORDS[lowercaseLexeme] || 'IDENTIFIER';
+          tokenList.push({line, type, lexeme });
+          continue;
+      }
+
       // - String Insertion Symbol (@)
+
       // - Operators
+
       // - Delimiters
+
       // - Unknown tokens
 
       // Placeholder: treat everything as unknown for now
@@ -403,7 +420,7 @@ end`;
               { type: 'IDENTIFIER', label: 'Identifiers' },
               { type: 'COMMENT_SINGLE', label: 'Single-line Comments //' },
               { type: 'COMMENT_MULTI', label: 'Multi-line Comments /* */' },
-              { type: 'DELIMITER', label: 'Braces { }' },
+             // { type: 'DELIMITER', label: 'Braces { }' },
               { type: 'LPAREN', label: 'Left Paren (' },
               { type: 'RPAREN', label: 'Right Paren )' },
               { type: 'LBRACKET', label: 'Left Bracket [' },
