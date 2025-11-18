@@ -150,6 +150,26 @@ const LexicalAnalyzerTemplate = () => {
       }
 
       // - String literals
+      if (char === '"') {
+        let str = '"';
+        i++;
+        while (i < code.length && code[i] !== '"') {
+          if (code[i] === '\\' && i + 1 < code.length) {
+            str += code[i] + code[i + 1];
+            i += 2;
+          } else {
+            if (code[i] === '\n') line++;
+            str += code[i];
+            i++;
+          }
+        }
+        if (i < code.length) {
+          str += '"';
+          i++;
+        }
+        tokenList.push({ line, type: 'STRING_LITERAL', lexeme: str });
+        continue;
+      }
 
       // - Numbers (integers and decimals)
 
