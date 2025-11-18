@@ -7,7 +7,9 @@ const LexicalAnalyzerTemplate = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const textareaRef = useRef(null);
 
+  // ========================================
   // Token Types for E.C.H.O Language
+  // ========================================
   const TOKEN_TYPES = {
     // Keywords
     KEYWORD_PROGRAM: 'KEYWORD_PROGRAM',
@@ -48,7 +50,9 @@ const LexicalAnalyzerTemplate = () => {
     UNKNOWN: 'UNKNOWN'
   };
 
-  // E.C.H.O Language Keywords (case-insensitive)
+  // ========================================
+  // E.C.H.O Language Keywords
+  // ========================================
   const KEYWORDS = {
     // Program keywords
     function: 'KEYWORD_PROGRAM',
@@ -93,8 +97,7 @@ const LexicalAnalyzerTemplate = () => {
   };
 
   // ========================================
-  // TODO: Implement lexical analysis logic here
-  // This function should tokenize the input code
+  // E.C.H.O Lexical analysis logic
   // ========================================
   const lexicalAnalyzer = (code) => {
     const tokenList = [];
@@ -146,20 +149,21 @@ const LexicalAnalyzerTemplate = () => {
         continue;
       }
 
-      // TODO: Add logic for:
       // - String literals
 
       // - Numbers (integers and decimals)
 
       // - Identifiers and keywords (case-insensitive)
-            if(/[a-zA-Z_]/.test(char)){
+      if(/[a-zA-Z_]/.test(char)){
         let lexeme = '';
           while (i < code.length && /[a-zA-Z0-9_]/.test(code[i])){
             lexeme += code[i];
             i++;
           }
+
           const lowercaseLexeme = lexeme.toLowerCase();
           const type = KEYWORDS[lowercaseLexeme] || 'IDENTIFIER';
+          
           tokenList.push({line, type, lexeme });
           continue;
       }
@@ -420,7 +424,6 @@ end`;
               { type: 'IDENTIFIER', label: 'Identifiers' },
               { type: 'COMMENT_SINGLE', label: 'Single-line Comments //' },
               { type: 'COMMENT_MULTI', label: 'Multi-line Comments /* */' },
-             // { type: 'DELIMITER', label: 'Braces { }' },
               { type: 'LPAREN', label: 'Left Paren (' },
               { type: 'RPAREN', label: 'Right Paren )' },
               { type: 'LBRACKET', label: 'Left Bracket [' },
