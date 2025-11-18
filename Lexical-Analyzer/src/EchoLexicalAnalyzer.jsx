@@ -271,6 +271,88 @@ const LexicalAnalyzerTemplate = () => {
       }
       
       // - Operators
+      const nxt = code[i + 1] || "";
+
+      // Unary increment/decrement (e.g., ++, --)
+      if (char === "+" && nxt === "+") {
+        tokenList.push({ line, type: 'UNARY_OP', lexeme: "++" });
+        i += 2;
+        continue;
+      }
+      if (char === "-" && nxt === "-") {
+        tokenList.push({ line, type: 'UNARY_OP', lexeme: "--" });
+        i += 2;
+        continue;
+      }
+
+      // Assignment with equals (e.g., +=, -=, *=, /=, %=)
+      if ((char === "+" || char === "-" || char === "*" || char === "/" || char === "%") && nxt === "=") {
+        tokenList.push({ line, type: 'ASSIGNMENT_OP', lexeme: char + nxt });
+        i += 2;
+        continue;
+      }
+
+      // Equality/inequality (e.g., ==, !=)
+      if (char === "=" && nxt === "=") {
+        tokenList.push({ line, type: 'RELATIONAL_OP', lexeme: "==" });
+        i += 2;
+        continue;
+      }
+      if (char === "!" && nxt === "=") {
+        tokenList.push({ line, type: 'RELATIONAL_OP', lexeme: "!=" });
+        i += 2;
+        continue;
+      }
+
+      // Relational (e.g., >=, <=)
+      if ((char === ">" || char === "<") && nxt === "=") {
+        tokenList.push({ line, type: 'RELATIONAL_OP', lexeme: char + nxt });
+        i += 2;
+        continue;
+      }
+
+      // Logical (e.g., ||, &&)
+      if (char === "|" && nxt === "|") {
+        tokenList.push({ line, type: 'LOGICAL_OP', lexeme: "||" });
+        i += 2;
+        continue;
+      }
+      if (char === "&" && nxt === "&") {
+        tokenList.push({ line, type: 'LOGICAL_OP', lexeme: "&&" });
+        i += 2;
+        continue;
+      }
+
+      // --- Single-Character Operators ---
+      // (Checked *after* multi-character ones)
+
+      // Assignment single '='
+      if (char === "=") {
+        tokenList.push({ line, type: 'ASSIGNMENT_OP', lexeme: "=" });
+        i++;
+        continue;
+      }
+
+      // Logical NOT '!'
+      if (char === "!") {
+        tokenList.push({ line, type: 'LOGICAL_OP', lexeme: "!" });
+        i++;
+        continue;
+      }
+
+      // Relational single < >
+      if (char === "<" || char === ">") {
+        tokenList.push({ line, type: 'RELATIONAL_OP', lexeme: char });
+        i++;
+        continue;
+      }
+
+      // Arithmetic single chars: + - * / % ^
+      if ("+-*/%^".includes(char)) {
+        tokenList.push({ line, type: 'ARITHMETIC_OP', lexeme: char });
+        i++;
+        continue;
+      }
 
       // - Delimiters
 
