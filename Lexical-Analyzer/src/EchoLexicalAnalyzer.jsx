@@ -172,20 +172,58 @@ const LexicalAnalyzerTemplate = () => {
       }
 
       // - Numbers (integers and decimals)
+      if (
+        /\d/.test(char) ||
+        ((char === '+' || char === '-') && /\d/.test(code[i + 1])) ||
+        (char === '.' && /\d/.test(code[i + 1]))
+      ) {
+        let num = '';
+        let isDecimal = false;
+        let hasExponent = false;
 
-      // - Identifiers and keywords (case-insensitive)
-      if(/[a-zA-Z_]/.test(char)){
-        let lexeme = '';
-          while (i < code.length && /[a-zA-Z0-9_]/.test(code[i])){
-            lexeme += code[i];
+        if (char === '+' || char === '-') {
+          num += char;
+          i++;
+        }
+
+        while (i < code.length) {
+          const c = code[i];
+
+          if (/\d/.test(c)) {
+            num += c;
             i++;
+            continue;
           }
 
-          const lowercaseLexeme = lexeme.toLowerCase();
-          const type = KEYWORDS[lowercaseLexeme] || 'IDENTIFIER';
-          
-          tokenList.push({line, type, lexeme });
-          continue;
+          if (c === '.' && !isDecimal && !hasExponent) {
+            isDecimal = true;
+            num += c;
+            i++;
+            continue;
+          }
+
+          if ((c === 'e' || c === 'E') && !hasExponent) {
+            hasExponent = true;
+            num += c;
+            i++;
+            if (code[i] === '+' || code[i] === '-') {
+              num += code[i];
+              i++;
+            }
+            if (i >= code.length || !/\d/.test(code[i])) {
+              break;
+            }
+            continue;
+          }
+          break;
+        }
+
+        tokenList.push({
+          line,
+          type: (isDecimal || hasExponent) ? 'DECIMAL_LITERAL' : 'NUMBER_LITERAL',
+          lexeme: num
+        });
+        continue;
       }
 
       // - String Insertion Symbol (@)
