@@ -1,11 +1,15 @@
 import React, { useState, useRef } from 'react';
 import { PlayCircle, Trash2, FileText } from 'lucide-react';
 
+// ================================================
+// E.C.H.O Programming Language Lexical Analyzer
+// ================================================
+
 const LexicalAnalyzerTemplate = () => {
-  const [sourceCode, setSourceCode] = useState('');
-  const [tokens, setTokens] = useState([]);
-  const [analyzing, setAnalyzing] = useState(false);
-  const textareaRef = useRef(null);
+  const [sourceCode, setSourceCode] = useState('');         // User's input source code
+  const [tokens, setTokens] = useState([]);                 // Tokenized result from analysis
+  const [analyzing, setAnalyzing] = useState(false);        // Loading state during analysis
+  const textareaRef = useRef(null);                         // Reference to textarea for cursor control
 
   // ========================================
   // Token Types for E.C.H.O Language
@@ -97,30 +101,34 @@ const LexicalAnalyzerTemplate = () => {
   };
 
   // ========================================
-  // E.C.H.O Lexical analysis logic
+  // E.C.H.O Lexical Analysis Logic
   // ========================================
   const lexicalAnalyzer = (code) => {
-    const tokenList = [];
-    let line = 1;
-    let i = 0;
+    const tokenList = [];  // Accumulator for recognized tokens
+    let line = 1;          // Current line number (starts at 1)
+    let i = 0;             // Current position in source code string
 
+    // Main tokenization loop - processes each character sequentially
     while (i < code.length) {
       const char = code[i];
 
-      // Skip whitespace
+      // Skip whitespace characters (spaces and tabs)
       if (char === ' ' || char === '\t') {
         i++;
         continue;
       }
 
-      // Handle newlines
+      // Handle newline characters
       if (char === '\n') {
         line++;
         i++;
         continue;
       }
 
-      // Single-line comment //
+      // =======================================
+      // Single-line comment detection: //
+      // =======================================
+      // Comments extend until the end of the line
       if (char === '/' && code[i + 1] === '/') {
         let comment = '';
         i += 2;
@@ -132,12 +140,15 @@ const LexicalAnalyzerTemplate = () => {
         continue;
       }
 
-      // Multi-line comment /* */
+      // =======================================
+      // Multi-line comment detection: /* */
+      // =======================================
+      // Comments can span multiple lines until closing */
       if (char === '/' && code[i + 1] === '*') {
         let comment = '/*';
         i += 2;
         while (i < code.length - 1 && !(code[i] === '*' && code[i + 1] === '/')) {
-          if (code[i] === '\n') line++;
+          if (code[i] === '\n') line++;  
           comment += code[i];
           i++;
         }
@@ -149,52 +160,124 @@ const LexicalAnalyzerTemplate = () => {
         continue;
       }
 
-      // - String literals
+      // ========================================
+      // String literal detection: "text"
+      // ========================================
+      // Strings can contain escape sequences and embedded variable references
       if (char === '"') {
-        let str = '"';
+        let currentSegment = '';
+        let startLine = line;
         i++;
+        
+        // Process string contents until closing quote is found
         while (i < code.length && code[i] !== '"') {
-          if (code[i] === '\\' && i + 1 < code.length) {
-            str += code[i] + code[i + 1];
-            i += 2;
-          } else {
-            if (code[i] === '\n') line++;
-            str += code[i];
-            i++;
+          // When @ is encountered, split the string into segments
+          if (code[i] === '@') {
+            // If we have accumulated text before the @, save it as a string literal
+            if (currentSegment.length > 0) {
+              tokenList.push({ 
+                line: startLine, 
+                type: 'STRING_LITERAL', 
+                lexeme: '"' + currentSegment + '"' 
+              });
+              currentSegment = '';
+              startLine = line;
+            }
+            
+            // Helper functions to identify valid identifier characters
+            const isLetter = (c) => /[A-Za-z]/.test(c);
+            const isDigit = (c) => /[0-9]/.test(c);
+            
+            // Build the string insertion token (e.g., @variableName)
+            let lexeme = '@';
+            let j = i + 1;
+            
+            // Collect identifier characters following the @ symbol
+            if (j < code.length && (isLetter(code[j]) || code[j] === '_')) {
+              while (
+                j < code.length &&
+                (isLetter(code[j]) || isDigit(code[j]) || code[j] === '_')
+              ) {
+                lexeme += code[j];
+                j++;
+              }
+            }
+            
+            // Create token for the string insertion
+            tokenList.push({
+              line: line,
+              type: 'STRING_INSERTION',
+              lexeme: lexeme
+            });
+            
+            i = j;  // Move past the identifier
+            continue;
           }
-        }
-        if (i < code.length) {
-          str += '"';
+          
+          // Escape sequences are preserved as-is in the string literal
+          if (code[i] === '\\' && i + 1 < code.length) {
+            currentSegment += code[i] + code[i + 1];
+            i += 2;
+            continue;
+          }
+          
+          // Track newlines within strings (for error reporting)
+          if (code[i] === '\n') {
+            line++;
+          }
+          
+          // Accumulate regular string characters
+          currentSegment += code[i];
           i++;
         }
-        tokenList.push({ line, type: 'STRING_LITERAL', lexeme: str });
+        
+        // Save any remaining string segment after the last @ or if no @ was found
+        if (currentSegment.length > 0) {
+          tokenList.push({ 
+            line: startLine, 
+            type: 'STRING_LITERAL', 
+            lexeme: '"' + currentSegment + '"' 
+          });
+        }
+        
+        // Skip the closing quote
+        if (i < code.length) {
+          i++;
+        }
         continue;
       }
 
-      // - Numbers (integers and decimals)
+      // ====================================================
+      // Number literal detection: integers and decimals
+      // ====================================================
+      // Supports: 123, -45, +67, 3.14, -2.5
       if (
-        /\d/.test(char) ||
-        ((char === '+' || char === '-') && /\d/.test(code[i + 1])) ||
-        (char === '.' && /\d/.test(code[i + 1]))
+        /\d/.test(char) ||                                              // Starts with digit
+        ((char === '+' || char === '-') && /\d/.test(code[i + 1])) ||   // Signed number
+        (char === '.' && /\d/.test(code[i + 1]))                        // Decimal starting with .
       ) {
         let num = '';
         let isDecimal = false;
         let hasExponent = false;
 
+        // Handle optional sign prefix (+ or -)
         if (char === '+' || char === '-') {
           num += char;
           i++;
         }
 
+        // Collect number digits, decimal point, and exponent
         while (i < code.length) {
           const c = code[i];
 
+          // Accumulate digits
           if (/\d/.test(c)) {
             num += c;
             i++;
             continue;
           }
 
+          // Handle decimal point (only one allowed, before exponent)
           if (c === '.' && !isDecimal && !hasExponent) {
             isDecimal = true;
             num += c;
@@ -202,6 +285,7 @@ const LexicalAnalyzerTemplate = () => {
             continue;
           }
 
+          // Handle scientific notation (e or E)
           if ((c === 'e' || c === 'E') && !hasExponent) {
             hasExponent = true;
             num += c;
@@ -218,6 +302,7 @@ const LexicalAnalyzerTemplate = () => {
           break;
         }
 
+        // Determine token type: decimal if it has . or e/E, otherwise integer
         tokenList.push({
           line,
           type: (isDecimal || hasExponent) ? 'DECIMAL_LITERAL' : 'NUMBER_LITERAL',
@@ -226,14 +311,19 @@ const LexicalAnalyzerTemplate = () => {
         continue;
       }
 
-      // Identifiers and Keywords
+      // ===================================
+      // Identifier and keyword detection
+      // ===================================
+      // Identifiers start with letter or underscore, followed by letters, digits, or underscores
       if (/[a-zA-Z_]/.test(char)) {
         let word = '';
+        // Collect all valid identifier characters
         while (i < code.length && /[a-zA-Z0-9_]/.test(code[i])) {
           word += code[i];
           i++;
         }
         
+        // Check if word is a keyword (case-insensitive matching)
         const lowerWord = word.toLowerCase();
         const tokenType = KEYWORDS[lowerWord] || 'IDENTIFIER';
         
@@ -241,15 +331,19 @@ const LexicalAnalyzerTemplate = () => {
         continue;
       }
 
-      // - String Insertion Symbol (@)
+      // ================================================
+      // String insertion symbol (@)
+      // ================================================
+      // Handles cases like: @variable outside of string literals
       if (char === '@') {
-
+        // Helper functions to identify valid identifier characters
         const isLetter = (c) => /[A-Za-z]/.test(c);
         const isDigit = (c) => /[0-9]/.test(c);
 
         let lexeme = '@';
         let j = i + 1;
 
+        // Collect identifier characters following @
         if (isLetter(code[j]) || code[j] === '_') {
           while (
             j < code.length &&
@@ -270,10 +364,12 @@ const LexicalAnalyzerTemplate = () => {
         continue;
       }
       
-      // - Operators
-      const nxt = code[i + 1] || "";
+      // ======================
+      // Operator detection
+      // ======================
+      const nxt = code[i + 1] || "";  // Next character (or empty string if at end)
 
-      // Unary increment/decrement (e.g., ++, --)
+      // Unary operators: increment and decrement
       if (char === "+" && nxt === "+") {
         tokenList.push({ line, type: 'UNARY_OP', lexeme: "++" });
         i += 2;
@@ -285,14 +381,14 @@ const LexicalAnalyzerTemplate = () => {
         continue;
       }
 
-      // Assignment with equals (e.g., +=, -=, *=, /=, %=)
+      // Compound assignment operators: +=, -=, *=, /=, %=
       if ((char === "+" || char === "-" || char === "*" || char === "/" || char === "%") && nxt === "=") {
         tokenList.push({ line, type: 'ASSIGNMENT_OP', lexeme: char + nxt });
         i += 2;
         continue;
       }
 
-      // Equality/inequality (e.g., ==, !=)
+      // Equality and inequality operators: ==, !=
       if (char === "=" && nxt === "=") {
         tokenList.push({ line, type: 'RELATIONAL_OP', lexeme: "==" });
         i += 2;
@@ -304,14 +400,14 @@ const LexicalAnalyzerTemplate = () => {
         continue;
       }
 
-      // Relational (e.g., >=, <=)
+      // Relational operators with equals: >=, <=
       if ((char === ">" || char === "<") && nxt === "=") {
         tokenList.push({ line, type: 'RELATIONAL_OP', lexeme: char + nxt });
         i += 2;
         continue;
       }
 
-      // Logical (e.g., ||, &&)
+      // Logical operators: || (OR), && (AND)
       if (char === "|" && nxt === "|") {
         tokenList.push({ line, type: 'LOGICAL_OP', lexeme: "||" });
         i += 2;
@@ -323,53 +419,92 @@ const LexicalAnalyzerTemplate = () => {
         continue;
       }
 
-      // --- Single-Character Operators ---
-      // (Checked *after* multi-character ones)
-
-      // Assignment single '='
+      // Simple assignment operator: =
       if (char === "=") {
         tokenList.push({ line, type: 'ASSIGNMENT_OP', lexeme: "=" });
         i++;
         continue;
       }
 
-      // Logical NOT '!'
+      // Logical NOT operator: !
       if (char === "!") {
         tokenList.push({ line, type: 'LOGICAL_OP', lexeme: "!" });
         i++;
         continue;
       }
 
-      // Relational single < >
+      // Relational comparison operators: <, >
       if (char === "<" || char === ">") {
         tokenList.push({ line, type: 'RELATIONAL_OP', lexeme: char });
         i++;
         continue;
       }
 
-      // Arithmetic single chars: + - * / % ^
+      // Arithmetic operators: +, -, *, /, %, ^
       if ("+-*/%^".includes(char)) {
         tokenList.push({ line, type: 'ARITHMETIC_OP', lexeme: char });
         i++;
         continue;
       }
 
-      // - Delimiters
+      // ==============
+      // Delimiters
+      // ==============
+      
+      // Comma delimiter: ,
+      if (char === ',') {
+        tokenList.push({ line, type: 'COMMA', lexeme: char });
+        i++;
+        continue;
+      }
 
-      // - Unknown tokens
+      // Left parenthesis: (
+      if (char === '(') {
+        tokenList.push({ line, type: 'LPAREN', lexeme: char });
+        i++;
+        continue;
+      }
 
-      // Placeholder: treat everything as unknown for now
-      tokenList.push({ 
-        line, 
-        type: 'UNKNOWN', 
-        lexeme: char 
-      });
+      // Right parenthesis: )
+      if (char === ')') {
+        tokenList.push({ line, type: 'RPAREN', lexeme: char });
+        i++;
+        continue;
+      }
+
+      // Left bracket: [
+      if (char === '[') {
+        tokenList.push({ line, type: 'LBRACKET', lexeme: char });
+        i++;
+        continue;
+      }
+
+      // Right bracket: ]
+      if (char === ']') {
+        tokenList.push({ line, type: 'RBRACKET', lexeme: char });
+        i++;
+        continue;
+      }
+
+      // =================================
+      // Unknown/unrecognized character
+      // =================================
+      // This handles any character that doesn't match the above patterns
+      tokenList.push({ line, type: 'UNKNOWN', lexeme: char });
       i++;
     }
 
+    // Add end-of-file marker to indicate completion
+    tokenList.push({ line, type: 'EOF', lexeme: '' });
+        
     return tokenList;
   };
 
+  // ========================================
+  // Helper Functions
+  // ========================================
+  
+  // Loads a sample E.C.H.O program into the source code textarea
   const loadSampleCode = () => {
     const sample = `start
 number x = 10
@@ -394,6 +529,8 @@ end`;
     setSourceCode(sample);
   };
 
+
+  // Token type to color mapping for UI display
   const getTokenTypeColor = (type) => {
     const colors = {
       KEYWORD_PROGRAM: 'bg-indigo-100 text-indigo-800',
@@ -432,6 +569,8 @@ end`;
   // ========================================
   // Event Handlers
   // ========================================
+
+  // Initiates lexical analysis on the current source code
   const handleAnalyze = () => {
     setAnalyzing(true);
     setTimeout(() => {
@@ -441,21 +580,26 @@ end`;
     }, 300);
   };
 
+  // Clears the source code input and token results
   const handleClear = () => {
     setSourceCode('');
     setTokens([]);
   };
 
+
+  // Handles Tab key press in textarea to insert tab character
   const handleKeyDown = (e) => {
     if (e.key === 'Tab') {
-      e.preventDefault();
+      e.preventDefault();  // Prevent default tab behavior (focus change)
       const textarea = e.target;
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
       
+      // Insert tab character at cursor position
       const newText = sourceCode.substring(0, start) + '\t' + sourceCode.substring(end);
       setSourceCode(newText);
       
+      // Restore cursor position after state update
       setTimeout(() => {
         if (textareaRef.current) {
           const newPosition = start + 1;
@@ -588,7 +732,7 @@ end`;
           <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Token Type Legend</h3>
           <div className="flex flex-wrap gap-2 sm:gap-3">
             {[
-       // Keywords (indigo family)
+              // Token type legend items - organized by category
               { type: 'KEYWORD_PROGRAM', label: 'Program Keywords' },
               { type: 'KEYWORD_LOOP', label: 'Loop Keywords' },
               { type: 'KEYWORD_CONDITIONAL', label: 'Conditionals' },
