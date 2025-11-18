@@ -145,6 +145,66 @@ const LexicalAnalyzerTemplate = () => {
         tokenList.push({ line, type: 'COMMENT_MULTI', lexeme: comment });
         continue;
       }
+       // String Literal Handling with String Insertion (@)
+if (char === '"') {
+  i++; // skip opening quote
+  let literalBuffer = "";
+
+  while (i < code.length && code[i] !== '"') {
+
+    // Detect @insertion
+    if (code[i] === '@') {
+      // If literal has content before @, emit it
+      if (literalBuffer.length > 0) {
+        tokenList.push({
+          line,
+          type: TOKEN_TYPES.STRING_LITERAL,
+          lexeme: `"${literalBuffer}`
+        });
+        literalBuffer = "";
+      }
+
+      // Parse @identifier
+      let insertLexeme = "@";
+      i++;
+
+      const isLetter = c => /[A-Za-z]/.test(c);
+      const isDigit = c => /[0-9]/.test(c);
+
+      if (isLetter(code[i]) || code[i] === '_') {
+        while (
+          i < code.length &&
+          (isLetter(code[i]) || isDigit(code[i]) || code[i] === '_')
+        ) {
+          insertLexeme += code[i];
+          i++;
+        }
+      }
+
+      tokenList.push({
+        line,
+        type: TOKEN_TYPES.STRING_INSERTION,
+        lexeme: insertLexeme
+      });
+
+      continue;
+    }
+
+    // Normal character inside string
+    literalBuffer += code[i];
+    i++;
+  }
+
+  // Emit ending literal (even empty)
+  tokenList.push({
+    line,
+    type: TOKEN_TYPES.STRING_LITERAL,
+    lexeme: `"${literalBuffer}"`
+  });
+
+  i++; // skip closing quote
+  continue;
+}
 
       // TODO: Add logic for:
       // - String literals
