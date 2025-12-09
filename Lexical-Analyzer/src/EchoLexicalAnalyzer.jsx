@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { PlayCircle, Trash2, FileText, Sun, Moon } from 'lucide-react';
+import { motion } from "framer-motion";
+import logo from "../src/LOGO.svg";
+import TextArea from './TextArea';
 // ================================================
 // E.C.H.O Programming Language Lexical Analyzer
 // ================================================
@@ -62,14 +65,19 @@ const LexicalAnalyzerTemplate = () => {
     LBRACKET: 'LBRACKET',
     RBRACKET: 'RBRACKET',
     COMMA: 'COMMA',
+    COLON: 'COLON',
     
     // Special
     STRING_INSERTION: 'STRING_INSERTION',
     COMMENT_SINGLE: 'COMMENT_SINGLE',
     COMMENT_MULTI: 'COMMENT_MULTI',
-    WHITESPACE: 'WHITESPACE',
     NEWLINE: 'NEWLINE',
-    UNKNOWN: 'UNKNOWN'
+    UNKNOWN: 'UNKNOWN',
+
+    // Indentation tokens
+    INDENT: 'INDENT',
+    DEDENT: 'DEDENT',
+    EOF: 'EOF'
   };
 
   // ========================================
@@ -83,6 +91,7 @@ const LexicalAnalyzerTemplate = () => {
     echo: 'KEYWORD_PROGRAM',
     input: 'KEYWORD_PROGRAM',
     return: 'KEYWORD_RESERVED',
+    struct: 'KEYWORD_RESERVED',
     
     // Data types
     number: 'KEYWORD_DATATYPE',
@@ -121,28 +130,98 @@ const LexicalAnalyzerTemplate = () => {
   // ========================================
   // E.C.H.O Lexical Analysis Logic
   // ========================================
-  const lexicalAnalyzer = (code) => {
+   const lexicalAnalyzer = (rawCode) => {
+    let code = rawCode || '';
     const tokenList = [];  // Accumulator for recognized tokens
     let line = 1;          // Current line number (starts at 1)
     let i = 0;             // Current position in source code string
+    const newline = '\n';
+    code = code.replace(/\u00A0/g, ' ');
+    code = code.replace(/[\u200B-\u200D\uFEFF]/g, '');
 
-    // Main tokenization loop - processes each character sequentially
+    const tabSize = 4; 
+    const indentStack = [0]; 
+    let atLineStart = true;  
+
+    //DEDENT
+    const emitDedentsTo = (targetIndent) => {
+      while (indentStack.length > 1 && indentStack[indentStack.length - 1] > targetIndent) {
+        indentStack.pop();
+        tokenList.push({ line, type: 'DEDENT', lexeme:''});
+      }
+
+    };
+
     while (i < code.length) {
+      if (code[i] === '\r') {
+        if (code[i + 1] === '\n') {
+          i++;
+          continue;
+        } else {
+          i++;
+          continue;
+        }
+      }
+
       const char = code[i];
 
-      // Skip whitespace characters (spaces and tabs)
-      if (char === ' ' || char === '\t') {
-        i++;
+      if (atLineStart) {
+        let indentCount = 0;
+        let j = i;
+        while (j < code.length && (code[j] === ' ' || code[j] === '\t' || code[j] === '\u00A0')) {
+          indentCount += code[j] === '\t' ? tabSize : 1;
+          j++;
+        }
+
+        if (j < code.length && code[j] === '\n') {
+          i = j + 1;
+          line++;
+          atLineStart = true;
+          continue;
+        }
+        if (j >= code.length) {
+          i = j;
+          break;
+        }
+
+        if (j < code.length && code[j] === '\n') {
+          // Blank line termination -> emit NEWLINE token for the current line
+          tokenList.push({ line, type: 'NEWLINE', lexeme: `${newline}` });
+          i = j + 1;
+          line++;
+          atLineStart = true;
+          continue;
+        }
+        if (j >= code.length) {
+          i = j;
+          break;
+        }
+
+        //INDENT
+        const topIndent = indentStack[indentStack.length - 1];
+        if (indentCount > topIndent) {
+          indentStack.push(indentCount);
+          tokenList.push({ line, type: 'INDENT', lexeme: '/t'.repeat(indentCount) });
+        } else if (indentCount < topIndent) {
+          emitDedentsTo(indentCount);
+        }
+        i = j;
+        atLineStart = false;
         continue;
       }
 
-      // Handle newline characters
+      if (char === ' ' || char === '\t' || char === '\u00A0') {
+        i++;
+        continue;
+      }
       if (char === '\n') {
+        // Emit NEWLINE token each time a physical line terminates
+        tokenList.push({ line, type: 'NEWLINE', lexeme: `${newline}` });
         line++;
         i++;
+        atLineStart = true;
         continue;
       }
-
       // =======================================
       // Single-line comment detection: //
       // =======================================
@@ -228,23 +307,20 @@ const LexicalAnalyzerTemplate = () => {
               lexeme: lexeme
             });
             
-            i = j;  // Move past the identifier
+            i = j;
             continue;
           }
-          
-          // Escape sequences are preserved as-is in the string literal
+
           if (code[i] === '\\' && i + 1 < code.length) {
             currentSegment += code[i] + code[i + 1];
             i += 2;
             continue;
           }
-          
-          // Track newlines within strings (for error reporting)
+
           if (code[i] === '\n') {
             line++;
           }
-          
-          // Accumulate regular string characters
+
           currentSegment += code[i];
           i++;
         }
@@ -269,6 +345,7 @@ const LexicalAnalyzerTemplate = () => {
       // Number literal detection: integers and decimals
       // ====================================================
       // Supports: 123, -45, +67, 3.14, -2.5
+
       if (
         /\d/.test(char) ||                                              // Starts with digit
         ((char === '+' || char === '-') && /\d/.test(code[i + 1])) ||   // Signed number
@@ -465,52 +542,56 @@ const LexicalAnalyzerTemplate = () => {
         continue;
       }
 
-      // ==============
       // Delimiters
-      // ==============
-      
-      // Comma delimiter: ,
+      //COMMA
       if (char === ',') {
         tokenList.push({ line, type: 'COMMA', lexeme: char });
         i++;
         continue;
       }
 
-      // Left parenthesis: (
+      //COLON
+      if (char === ':') {
+        tokenList.push({ line, type: 'COLON', lexeme: ':' });
+        i++;
+        continue;
+      }
+
+      //LEFT PARENTHESIS
       if (char === '(') {
         tokenList.push({ line, type: 'LPAREN', lexeme: char });
         i++;
         continue;
       }
 
-      // Right parenthesis: )
+      //RIGHT PARENTHESIS
       if (char === ')') {
         tokenList.push({ line, type: 'RPAREN', lexeme: char });
         i++;
         continue;
       }
 
-      // Left bracket: [
+      //LEFT BRACKET
       if (char === '[') {
         tokenList.push({ line, type: 'LBRACKET', lexeme: char });
         i++;
         continue;
       }
 
-      // Right bracket: ]
+      //RIGHT BRACKET
       if (char === ']') {
         tokenList.push({ line, type: 'RBRACKET', lexeme: char });
         i++;
         continue;
       }
 
-      // =================================
-      // Unknown/unrecognized character
-      // =================================
-      // This handles any character that doesn't match the above patterns
+      // If we reach here, it's an unknown/unrecognized character
       tokenList.push({ line, type: 'UNKNOWN', lexeme: char });
       i++;
     }
+
+    // At EOF: emit DEDENTs to return to baseline (0)
+    emitDedentsTo(0);
 
     // Add end-of-file marker to indicate completion
     tokenList.push({ line, type: 'EOF', lexeme: '' });
@@ -531,15 +612,15 @@ string name = "Alice"
 boolean flag = true
 
 if x > 5
-    echo "x is greater than 5"
+ echo "x is greater than 5"
 end if
 
 for i = 1 to 10
-    echo "Count: @i"
+ echo "Count: @i"
 end for
 
 function number add(number a, number b)
-    return a + b
+ return a + b
 end function
 
 echo "Result: @x"
@@ -552,58 +633,54 @@ const loadComplexSample = () => {
 `START
 
 struct CustomerRecord :
-  Name: string (capitalizeName),
-  Age: integer (validateAge),
-  ZipCode: string (validateZipCode)
-
+ Name: string (capitalizeName),
+ Age: integer (validateAge),
+ ZipCode: string (validateZipCode)
 
 // Bound Functions
 
 function validateAge(value)
-  if value >= 18 then
-    return true
-  else
-    error("Age must be 18 or older.") 
-    return false
-  end if
+ if value >= 18 then
+  return true
+ else
+  error("Age must be 18 or older.") 
+   return false 
+ end if
 end function
 
 function capitalizeName(value)
-  return capitalizeEachWord(value) 
+ return capitalizeEachWord(value) 
 end function
 
 function validateZipCode(value)
-  if length(value) == 5 then
-    return true
-  else
-    error("ZipCode must be 5 digits.") 
-    return false
-  end if
+ if length(value) == 5 then
+  return true
+ else
+  error("ZipCode must be 5 digits.") 
+   return false
+ end if
 end function
-
 
 // Scenario 1: Successful creation and transformation
 
 // Input Name is lowercase ("jane doe")
 myCustomer = CustomerRecord new:
-  Name: "jane doe",
-  Age: 25,
-  ZipCode: "90210"
-
+ Name: "jane doe",
+ Age: 25,
+ ZipCode: "90210"
 
 echo "Transformed Name in Object: @myCustomer.Name" // Output: Jane Doe
 echo "Age: @myCustomer.Age"
 echo "ZipCode: @myCustomer.ZipCode"
-
 
 // Scenario 2: Failed validation (Age < 18)
 
 // This operation would typically trigger a runtime error in ECHO
 
 youngCustomer = CustomerRecord new:
-  Name: "Billy",
-  Age: 16,  // Fails validateAge
-  ZipCode: "12345"
+ Name: "Billy",
+ Age: 16,  // Fails validateAge
+ ZipCode: "12345"
 
 echo "Object creation status: FAILED"
 
@@ -632,7 +709,6 @@ END`;
       UNARY_OP: 'bg-teal-200 text-teal-800',
       LOGICAL_OP: 'bg-teal-300 text-teal-900',
       RELATIONAL_OP: 'bg-teal-400 text-teal-900',
-      COMMENT: 'bg-emerald-50 text-emerald-700',
       COMMENT_SINGLE: 'bg-emerald-50 text-emerald-700',
       COMMENT_MULTI: 'bg-emerald-50 text-emerald-700',
       STRING_INSERTION: 'text-yellow-700 bg-yellow-50',
@@ -645,6 +721,9 @@ END`;
       WHITESPACE: 'bg-teal-50 text-teal-700',
       NEWLINE: 'bg-violet-50 text-violet-700',
       UNKNOWN: 'bg-red-100 text-red-800',
+      INDENT: 'bg-cyan-100 text-cyan-800',
+      DEDENT: 'bg-rose-50 text-rose-800',
+      EOF: 'bg-gray-100 text-gray-800',
     };
     return colors[type] || 'text-gray-700 bg-gray-50';
   };
@@ -696,179 +775,182 @@ END`;
   // ========================================
   // UI Components
   // ========================================
+
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-4 sm:mb-6 md:mb-8 text-center">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-2 sm:mb-3">
-            ECHO Lexical Analyzer
-          </h1>
-          <p className="text-sm sm:text-base md:text-lg text-gray-700 px-2">
-            Executable Code, Human Output
-          </p>
-        </div>
-
-        <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
-          <button
-            onClick={handleThemeToggle}
-            className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 shadow-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-            aria-label="Toggle dark mode"
-          >
-            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-        </div>
-
-      <div className="flex flex-col lg:flex-row lg:gap-6">
-        {/* Source Code Input Section */}
-        <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 md:p-6 mb-4 sm:mb-5 md:mb-6 lg:mb-0 lg:w-1/2 h-[650px]">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4 gap-3 sm:gap-0">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <FileText size={20} className="sm:w-6 sm:h-6" />
-              <span>Source Code Input</span>
-            </h2>
-            <div className="flex gap-2 w-full sm:w-auto">
-            <button
-              onClick={loadSampleCode}
-              className="px-3 py-2 sm:px-4 bg-yellow-200 hover:bg-yellow-300 text-gray-700 rounded-md transition-colors text-xs sm:text-sm font-medium w-full sm:w-auto"
-            >
-              Load Sample
-            </button>
-            <button
-              onClick={loadComplexSample}
-              className="px-3 py-2 sm:px-4 bg-green-200 hover:bg-green-300 text-gray-700 rounded-md transition-colors text-xs sm:text-sm font-medium w-full sm:w-auto"
-            >
-              ECHO Code
-            </button>
-          </div>
-          </div>
-          <textarea
-            ref={textareaRef}
-            value={sourceCode}
-            onChange={(e) => setSourceCode(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Enter your code here..."
-            className="w-full h-[500px] p-3 sm:p-4 border border-gray-300 rounded-md font-mono text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            spellCheck={false}
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-950 p-6 flex justify-center items-start">
+      <div className="w-full max-w-7xl">
+         <div className="flex items-center justify-center gap-3 mb-2">
+          <img
+            src={logo}
+            alt="E.C.H.O logo"
+            role="img"
+            className="w-20 h-20 sm:w-20 sm:h-20 object-contain"
           />
-
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-1 sm:mt-2">
-            <button
-              onClick={handleAnalyze}
-              disabled={!sourceCode || analyzing}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold rounded-md transition-colors text-sm sm:text-base"
-            >
-              <PlayCircle size={18} className="sm:w-5 sm:h-5" />
-              <span>{analyzing ? 'Analyzing...' : 'Analyze Code'}</span>
-            </button>
-            
-            <button
-              onClick={handleClear}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-md transition-colors text-sm sm:text-base"
-            >
-              <Trash2 size={18} className="sm:w-5 sm:h-5" />
-              <span>Clear</span>
-            </button>
-          </div>
+        <motion.h1
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+         className="text-5xl font-black text-cyan-400 dark:text-cyan-300 leading-tight"
+        >
+          ECHO Lexical Analyzer
+        </motion.h1>
         </div>
+        <p className="text-center text-gray-600 dark:text-gray-300 mb-10 text-lg">
+          Executable Code, Human Output
+        </p>
 
-        {/* Token Analysis Results Section */}
-        <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 md:p-6 mb-4 sm:mb-5 md:mb-6 lg:w-1/2 h-[650px] overflow-y-auto">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
-            Token Analysis Results
-          </h2>
-
-          {tokens.length === 0 ? (
-            <div className="min-h-[500px] flex items-center justify-center text-gray-400">
-              <div className="text-center px-4">
-                <FileText size={48} className="sm:w-16 sm:h-16 md:w-16 md:h-16 mx-auto mb-3 sm:mb-4 opacity-30" />
-                <p className="text-base sm:text-lg text-gray-500 mb-2">No tokens to display</p>
-                <p className="text-xs sm:text-sm text-gray-400">Enter code and click "Analyze Code"</p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white/70 dark:bg-slate-800/60 backdrop-blur-xl p-6 rounded-2xl shadow-xl border border-white/30 dark:border-slate-700 flex flex-col"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-slate-700 dark:text-slate-200">
+                Source Code Input
+              </h2>
+              <div className="flex items-center gap-2">
+                <button className="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition">
+                  <Sun className="w-5 h-5 dark:hidden" />
+                  <Moon className="w-5 h-5 hidden dark:block" />
+                </button>
+                <button
+                  onClick={loadSampleCode}
+                  className="px-3 py-2 sm:px-4 bg-yellow-200 hover:bg-yellow-300 text-gray-700 rounded-md transition-colors text-xs sm:text-sm font-medium"
+                >
+                  Load Sample
+                </button>
+                <button
+                  onClick={loadComplexSample}
+                  className="px-3 py-2 sm:px-4 bg-green-200 hover:bg-green-300 text-gray-700 rounded-md transition-colors text-xs sm:text-sm font-medium"
+                >
+                  ECHO Code
+                </button>
               </div>
             </div>
-          ) : (
-            <div className="border border-gray-300 rounded-md overflow-auto max-h-[500px]">
-              <table className="w-full text-xs sm:text-sm min-w-[600px]">
-                <thead className="bg-gray-100 sticky top-0 z-10">
-                  <tr>
-                    <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 text-left font-semibold text-gray-700 border-b border-gray-300 whitespace-nowrap">
-                      Line No.
-                    </th>
-                    <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 text-left font-semibold text-gray-700 border-b border-gray-300 whitespace-nowrap">
-                      Token Type
-                    </th>
-                    <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 text-left font-semibold text-gray-700 border-b border-gray-300">
-                      Lexeme
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tokens.map((token, index) => (
-                    <tr 
-                      key={index}
-                      className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="px-2 sm:px-3 md:px-4 py-2 text-gray-600 font-mono whitespace-nowrap">
-                        {token.line}
-                      </td>
-                      <td className="px-2 sm:px-3 md:px-4 py-2">
-                        <span className={`px-2 py-1 sm:px-3 rounded-md text-xs font-semibold inline-block ${getTokenTypeColor(token.type)}`}>
-                          {token.type}
-                        </span>
-                      </td>
-                      <td className="px-2 sm:px-3 md:px-4 py-2 font-mono text-gray-900 break-words break-all">
-                        {token.lexeme}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+
+              <div className="mb-4 h-[510px] min-w-0">
+            <TextArea
+              value={sourceCode}
+              onChange={setSourceCode}
+              textareaRef={textareaRef}
+              className={"w-full h-full bg-transparent text-white font-mono text-sm leading-6 " +
+                            "py-3 px-3 box-border rounded-md border border-blue-300 " +
+                              "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+             }
+           />
         </div>
-</div>
-        {/* Token Type Legend */}
-        <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 md:p-6">
-          <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Token Type Legend</h3>
-          <div className="flex flex-wrap gap-2 sm:gap-3">
-            {[
-              // Token type legend items - organized by category
-              { type: 'KEYWORD_PROGRAM', label: 'Program Keywords' },
-              { type: 'KEYWORD_LOOP', label: 'Loop Keywords' },
-              { type: 'KEYWORD_CONDITIONAL', label: 'Conditionals' },
-              { type: 'KEYWORD_RESERVED', label: 'Reserved Words' },
-              { type: 'KEYWORD_DATATYPE', label: 'Data Types' },
-              { type: 'STRING_LITERAL', label: 'Strings' },
-              { type: 'NUMBER_LITERAL', label: 'Numbers' },
-              { type: 'DECIMAL_LITERAL', label: 'Decimals' },
-              { type: 'BOOLEAN_LITERAL', label: 'Booleans' },
-              { type: 'ARITHMETIC_OP', label: 'Arithmetic' },
-              { type: 'ASSIGNMENT_OP', label: 'Assignment' },
-              { type: 'LOGICAL_OP', label: 'Logical' },
-              { type: 'RELATIONAL_OP', label: 'Relational' },
-              { type: 'UNARY_OP', label: 'Unary' },
-              { type: 'IDENTIFIER', label: 'Identifiers' },
-              { type: 'COMMENT_SINGLE', label: 'Single-line Comments //' },
-              { type: 'COMMENT_MULTI', label: 'Multi-line Comments /* */' },
-              { type: 'LPAREN', label: 'Left Paren (' },
-              { type: 'RPAREN', label: 'Right Paren )' },
-              { type: 'LBRACKET', label: 'Left Bracket [' },
-              { type: 'RBRACKET', label: 'Right Bracket ]' },
-              { type: 'COMMA', label: 'Comma' },
-              { type: 'STRING_INSERTION', label: 'String Insertion (@)' },
-              { type: 'NOISE_WORD', label: 'Noise Words' },
-              { type: 'WHITESPACE', label: 'Whitespace' },
-              { type: 'NEWLINE', label: 'Newline' },
-              { type: 'UNKNOWN', label: 'Unknown' },
-            ].map((item) => (
-              <span
-                key={item.type}
-                className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-xs sm:text-sm font-semibold ${getTokenTypeColor(item.type)}`}
+
+            <div className="flex justify-between mt-4">
+              <button
+                onClick={handleAnalyze}
+                disabled={!sourceCode || analyzing}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold rounded-md transition-colors text-sm sm:text-base"
               >
-                {item.label}
-              </span>
-            ))}
+                <PlayCircle size={18} className="sm:w-5 sm:h-5" />
+                <span>{analyzing ? "Analyzing..." : "Analyze Code"}</span>
+              </button>
+
+              <button
+                onClick={handleClear}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-md transition-colors text-sm sm:text-base"
+              >
+                <Trash2 size={18} className="sm:w-5 sm:h-5" />
+                <span>Clear</span>
+              </button>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white/70 dark:bg-slate-800/60 backdrop-blur-xl p-6 rounded-2xl shadow-xl border border-white/30 dark:border-slate-700 flex flex-col"
+          >
+            <h2 className="text-xl font-semibold text-slate-700 dark:text-slate-200 mb-4">
+              Token Analysis Results
+            </h2>
+
+             <div className="h-[500px] sm:h-[520px] overflow-auto rounded-xl bg-transparent text-slate-50 p-4 font-mono text-sm border border-slate-700 shadow-inner">
+              {tokens.length === 0 ? (
+                <div className="min-h-[200px] flex items-center justify-center text-gray-400">
+                  <div className="text-center px-4">
+                    <FileText size={48} className="sm:w-16 sm:h-16 md:w-16 md:h-16 mx-auto mb-3 sm:mb-4 opacity-30" />
+                    <p className="text-base sm:text-lg text-gray-500 mb-2">No tokens to display</p>
+                    <p className="text-xs sm:text-sm text-gray-400">Enter code and click "Analyze Code"</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="border border-gray-300 rounded-md bg-transparent h-full overflow-auto">
+                  <table className="w-full text-xs sm:text-sm min-w-[600px]">
+                    <thead className="bg-slate-900/70 sticky top-0 z-10">
+                      <tr>
+                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 text-left font-semibold text-gray-200 border-b border-gray-700 whitespace-nowrap">Line No.</th>
+                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 text-left font-semibold text-gray-200 border-b border-gray-700 whitespace-nowrap">Token Type</th>
+                        <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 text-left font-semibold text-gray-200 border-b border-gray-700">Lexeme</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tokens.map((token, index) => (
+                        <tr key={index} className="border-b border-gray-700 hover:bg-slate-800 transition-colors">
+                          <td className="px-2 sm:px-3 md:px-4 py-2 text-gray-300 font-mono whitespace-nowrap">{token.line}</td>
+                          <td className="px-2 sm:px-3 md:px-4 py-2">
+                            <span className={`px-2 py-1 sm:px-3 rounded-md text-xs font-semibold inline-block ${getTokenTypeColor(token.type)}`}>
+                              {token.type}
+                            </span>
+                          </td>
+                          <td className="px-2 sm:px-3 md:px-4 py-2 font-mono text-gray-200 break-words break-all">{token.lexeme}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          <div className="col-span-2 flex justify-center">
+            <div className="mt-6 w-full max-w-3xl bg-white/70 dark:bg-slate-800/60 backdrop-blur-xl p-4 rounded-lg shadow-md border border-white/30 dark:border-slate-700">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-slate-200 mb-3 sm:mb-4 text-center">Token Type Legend</h3>
+              <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
+                {[
+                  { type: 'KEYWORD_PROGRAM', label: 'Program Keywords' },
+                  { type: 'KEYWORD_LOOP', label: 'Loop Keywords' },
+                  { type: 'KEYWORD_CONDITIONAL', label: 'Conditionals' },
+                  { type: 'KEYWORD_RESERVED', label: 'Reserved Words' },
+                  { type: 'KEYWORD_DATATYPE', label: 'Data Types' },
+                  { type: 'STRING_LITERAL', label: 'Strings' },
+                  { type: 'NUMBER_LITERAL', label: 'Numbers' },
+                  { type: 'DECIMAL_LITERAL', label: 'Decimals' },
+                  { type: 'BOOLEAN_LITERAL', label: 'Booleans' },
+                  { type: 'ARITHMETIC_OP', label: 'Arithmetic' },
+                  { type: 'ASSIGNMENT_OP', label: 'Assignment' },
+                  { type: 'LOGICAL_OP', label: 'Logical' },
+                  { type: 'RELATIONAL_OP', label: 'Relational' },
+                  { type: 'UNARY_OP', label: 'Unary' },
+                  { type: 'IDENTIFIER', label: 'Identifiers' },
+                  { type: 'COMMENT_SINGLE', label: 'Single-line Comments //' },
+                  { type: 'COMMENT_MULTI', label: 'Multi-line Comments /* */' },
+                  { type: 'LPAREN', label: 'Left Paren (' },
+                  { type: 'RPAREN', label: 'Right Paren )' },
+                  { type: 'LBRACKET', label: 'Left Bracket [' },
+                  { type: 'RBRACKET', label: 'Right Bracket ]' },
+                  { type: 'COMMA', label: 'Comma' },
+                  { type: 'STRING_INSERTION', label: 'String Insertion (@)' },
+                  { type: 'NOISE_WORD', label: 'Noise Words' },
+                  { type: 'WHITESPACE', label: 'Whitespace' },
+                  { type: 'NEWLINE', label: 'Newline' },
+                  { type: 'INDENT', label: 'INDENT' },
+                  { type: 'DEDENT', label: 'DEDENT' },
+                  { type: 'UNKNOWN', label: 'Unknown' },
+                ].map((item) => (
+                  <span
+                    key={item.type}
+                    className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold ${getTokenTypeColor(item.type)}`}
+                  >
+                    {item.label}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
