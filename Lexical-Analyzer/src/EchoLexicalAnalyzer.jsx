@@ -135,7 +135,7 @@ const LexicalAnalyzerTemplate = () => {
     const tokenList = [];  // Accumulator for recognized tokens
     let line = 1;          // Current line number (starts at 1)
     let i = 0;             // Current position in source code string
-    const newline = '\n';
+    
     code = code.replace(/\u00A0/g, ' ');
     code = code.replace(/[\u200B-\u200D\uFEFF]/g, '');
 
@@ -147,7 +147,7 @@ const LexicalAnalyzerTemplate = () => {
     const emitDedentsTo = (targetIndent) => {
       while (indentStack.length > 1 && indentStack[indentStack.length - 1] > targetIndent) {
         indentStack.pop();
-        tokenList.push({ line, type: 'DEDENT', lexeme:''});
+        tokenList.push({ line, type: 'DEDENT', lexeme:'⇤'});
       }
 
     };
@@ -186,7 +186,7 @@ const LexicalAnalyzerTemplate = () => {
 
         if (j < code.length && code[j] === '\n') {
           // Blank line termination -> emit NEWLINE token for the current line
-          tokenList.push({ line, type: 'NEWLINE', lexeme: `${newline}` });
+          tokenList.push({ line, type: 'NEWLINE', lexeme: '/n' });
           i = j + 1;
           line++;
           atLineStart = true;
@@ -216,7 +216,7 @@ const LexicalAnalyzerTemplate = () => {
       }
       if (char === '\n') {
         // Emit NEWLINE token each time a physical line terminates
-        tokenList.push({ line, type: 'NEWLINE', lexeme: `${newline}` });
+        tokenList.push({ line, type: 'NEWLINE', lexeme: '/n' });
         line++;
         i++;
         atLineStart = true;
