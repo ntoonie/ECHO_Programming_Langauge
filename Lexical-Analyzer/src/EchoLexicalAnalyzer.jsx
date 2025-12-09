@@ -815,13 +815,13 @@ END`;
                 </button>
                 <button
                   onClick={loadSampleCode}
-                  className="px-3 py-2 sm:px-4 bg-yellow-200 hover:bg-yellow-300 text-gray-700 rounded-md transition-colors text-xs sm:text-sm font-medium"
+                  className="px-3 py-2 sm:px-4 bg-cyan-200 hover:bg-yellow-300 text-gray-700 rounded-md transition-colors text-xs sm:text-sm font-medium"
                 >
                   Load Sample
                 </button>
                 <button
                   onClick={loadComplexSample}
-                  className="px-3 py-2 sm:px-4 bg-green-200 hover:bg-green-300 text-gray-700 rounded-md transition-colors text-xs sm:text-sm font-medium"
+                  className="px-3 py-2 sm:px-4 bg-cyan-200 hover:bg-green-300 text-gray-700 rounded-md transition-colors text-xs sm:text-sm font-medium"
                 >
                   ECHO Code
                 </button>
