@@ -71,6 +71,7 @@ const LexicalAnalyzerTemplate = () => {
     STRING_INSERTION: 'STRING_INSERTION',
     COMMENT_SINGLE: 'COMMENT_SINGLE',
     COMMENT_MULTI: 'COMMENT_MULTI',
+    WHITESPACE: 'WHITESPACE',
     NEWLINE: 'NEWLINE',
     UNKNOWN: 'UNKNOWN',
 
@@ -164,7 +165,7 @@ const LexicalAnalyzerTemplate = () => {
       }
 
       const char = code[i];
-
+      //WHITESPACE
       if (atLineStart) {
         let indentCount = 0;
         let j = i;
@@ -172,27 +173,22 @@ const LexicalAnalyzerTemplate = () => {
           indentCount += code[j] === '\t' ? tabSize : 1;
           j++;
         }
-
         if (j < code.length && code[j] === '\n') {
+          const wsLexeme = code.slice(i, j); 
+          tokenList.push({ line, type: 'WHITESPACE', lexeme: '␣' });
           i = j + 1;
           line++;
           atLineStart = true;
           continue;
         }
-        if (j >= code.length) {
-          i = j;
-          break;
-        }
 
-        if (j < code.length && code[j] === '\n') {
-          // Blank line termination -> emit NEWLINE token for the current line
-          tokenList.push({ line, type: 'NEWLINE', lexeme: '/n' });
-          i = j + 1;
-          line++;
-          atLineStart = true;
-          continue;
-        }
         if (j >= code.length) {
+          const wsLexeme = code.slice(i, j);
+          if (wsLexeme.length > 0) {
+            tokenList.push({ line, type: 'WHITESPACE', lexeme: '␣' });
+          } else {
+            tokenList.push({ line, type: 'WHITESPACE', lexeme: '␣' });
+          }
           i = j;
           break;
         }
@@ -209,13 +205,12 @@ const LexicalAnalyzerTemplate = () => {
         atLineStart = false;
         continue;
       }
-
+      //NEWLINE
       if (char === ' ' || char === '\t' || char === '\u00A0') {
         i++;
         continue;
       }
       if (char === '\n') {
-        // Emit NEWLINE token each time a physical line terminates
         tokenList.push({ line, type: 'NEWLINE', lexeme: '/n' });
         line++;
         i++;
@@ -410,6 +405,7 @@ const LexicalAnalyzerTemplate = () => {
       // Identifier and keyword detection
       // ===================================
       // Identifiers start with letter or underscore, followed by letters, digits, or underscores
+
       if (/[a-zA-Z_]/.test(char)) {
         let word = '';
         // Collect all valid identifier characters
@@ -417,7 +413,6 @@ const LexicalAnalyzerTemplate = () => {
           word += code[i];
           i++;
         }
-        
         // Check if word is a keyword (case-insensitive matching)
         const lowerWord = word.toLowerCase();
         const tokenType = KEYWORDS[lowerWord] || 'IDENTIFIER';
