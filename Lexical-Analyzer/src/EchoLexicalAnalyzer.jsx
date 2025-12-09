@@ -1,6 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { PlayCircle, Trash2, FileText } from 'lucide-react';
-
+import React, { useState, useRef, useEffect } from 'react';
+import { PlayCircle, Trash2, FileText, Sun, Moon } from 'lucide-react';
 // ================================================
 // E.C.H.O Programming Language Lexical Analyzer
 // ================================================
@@ -10,6 +9,25 @@ const LexicalAnalyzerTemplate = () => {
   const [tokens, setTokens] = useState([]);                 // Tokenized result from analysis
   const [analyzing, setAnalyzing] = useState(false);        // Loading state during analysis
   const textareaRef = useRef(null);                         // Reference to textarea for cursor control
+
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return localStorage.getItem('theme') === 'dark';
+  });
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (isDarkMode) {
+      root.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      root.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  const handleThemeToggle = () => {
+    setIsDarkMode(prevMode => !prevMode);
+  };
 
   // ========================================
   // Token Types for E.C.H.O Language
@@ -680,7 +698,7 @@ END`;
   // ========================================
   return (
     <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-4 sm:mb-6 md:mb-8 text-center">
           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-2 sm:mb-3">
@@ -691,8 +709,19 @@ END`;
           </p>
         </div>
 
+        <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+          <button
+            onClick={handleThemeToggle}
+            className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 shadow-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+            aria-label="Toggle dark mode"
+          >
+            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+        </div>
+
+      <div className="flex flex-col lg:flex-row lg:gap-6">
         {/* Source Code Input Section */}
-        <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 md:p-6 mb-4 sm:mb-5 md:mb-6">
+        <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 md:p-6 mb-4 sm:mb-5 md:mb-6 lg:mb-0 lg:w-1/2 h-[650px]">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4 gap-3 sm:gap-0">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
               <FileText size={20} className="sm:w-6 sm:h-6" />
@@ -719,12 +748,12 @@ END`;
             onChange={(e) => setSourceCode(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Enter your code here..."
-            className="w-full **h-80** p-3 sm:p-4 border border-gray-300 rounded-md font-mono text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full h-[500px] p-3 sm:p-4 border border-gray-300 rounded-md font-mono text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             spellCheck={false}
           />
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-3 sm:mt-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-1 sm:mt-2">
             <button
               onClick={handleAnalyze}
               disabled={!sourceCode || analyzing}
@@ -745,13 +774,13 @@ END`;
         </div>
 
         {/* Token Analysis Results Section */}
-        <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 md:p-6 mb-4 sm:mb-5 md:mb-6">
+        <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 md:p-6 mb-4 sm:mb-5 md:mb-6 lg:w-1/2 h-[650px] overflow-y-auto">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
             Token Analysis Results
           </h2>
 
           {tokens.length === 0 ? (
-            <div className="min-h-[200px] sm:min-h-[300px] md:min-h-[400px] flex items-center justify-center text-gray-400">
+            <div className="min-h-[500px] flex items-center justify-center text-gray-400">
               <div className="text-center px-4">
                 <FileText size={48} className="sm:w-16 sm:h-16 md:w-16 md:h-16 mx-auto mb-3 sm:mb-4 opacity-30" />
                 <p className="text-base sm:text-lg text-gray-500 mb-2">No tokens to display</p>
@@ -759,7 +788,7 @@ END`;
               </div>
             </div>
           ) : (
-            <div className="border border-gray-300 rounded-md overflow-auto max-h-[400px] sm:max-h-[500px] md:max-h-[600px]">
+            <div className="border border-gray-300 rounded-md overflow-auto max-h-[500px]">
               <table className="w-full text-xs sm:text-sm min-w-[600px]">
                 <thead className="bg-gray-100 sticky top-0 z-10">
                   <tr>
@@ -798,7 +827,7 @@ END`;
             </div>
           )}
         </div>
-
+</div>
         {/* Token Type Legend */}
         <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 md:p-6">
           <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Token Type Legend</h3>
