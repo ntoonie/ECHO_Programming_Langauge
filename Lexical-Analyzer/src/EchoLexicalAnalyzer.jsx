@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { PlayCircle, Trash2, FileText, Sun, Moon, Upload } from 'lucide-react';
+import { PlayCircle, Trash2, FileText, Upload } from 'lucide-react';
 import { motion } from "framer-motion";
 import logo from "../src/LOGO.svg";
 import TextArea from './TextArea';
@@ -13,26 +13,7 @@ const LexicalAnalyzerTemplate = () => {
   const [analyzing, setAnalyzing] = useState(false);        // Loading state during analysis
   const [uploadedSample, setUploadedSample] = useState(''); // Uploaded sample code
   const textareaRef = useRef(null);                         // Reference to textarea for cursor control
-  const fileInputRef = useRef(null);                        // Reference to file input for upload
-
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    return localStorage.getItem('theme') === 'dark';
-  });
-
-  useEffect(() => {
-    const root = window.document.documentElement;
-    if (isDarkMode) {
-      root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDarkMode]);
-
-  const handleThemeToggle = () => {
-    setIsDarkMode(prevMode => !prevMode);
-  };
+  const fileInputRef = useRef(null);                        // Reference to file input for uploa
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -52,7 +33,9 @@ const LexicalAnalyzerTemplate = () => {
   // ========================================
   // Token Types for E.C.H.O Language
   // ========================================
+
   const TOKEN_TYPES = {
+
     // Keywords
     KEYWORD_PROGRAM: 'KEYWORD_PROGRAM',
     KEYWORD_DATATYPE: 'KEYWORD_DATATYPE',
@@ -101,6 +84,7 @@ const LexicalAnalyzerTemplate = () => {
   // ========================================
   // E.C.H.O Language Keywords
   // ========================================
+
   const KEYWORDS = {
     // Program keywords
     function: 'KEYWORD_PROGRAM',
@@ -148,6 +132,7 @@ const LexicalAnalyzerTemplate = () => {
   // ========================================
   // E.C.H.O Lexical Analysis Logic
   // ========================================
+
    const lexicalAnalyzer = (rawCode) => {
     let code = rawCode || '';
     const tokenList = [];  // Accumulator for recognized tokens
@@ -182,6 +167,7 @@ const LexicalAnalyzerTemplate = () => {
       }
 
       const char = code[i];
+
       //WHITESPACE
       if (atLineStart) {
         let indentCount = 0;
@@ -222,6 +208,7 @@ const LexicalAnalyzerTemplate = () => {
         atLineStart = false;
         continue;
       }
+
       //NEWLINE
       if (char === ' ' || char === '\t' || char === '\u00A0') {
         i++;
@@ -238,6 +225,7 @@ const LexicalAnalyzerTemplate = () => {
       // Single-line comment detection: //
       // =======================================
       // Comments extend until the end of the line
+
       if (char === '/' && code[i + 1] === '/') {
         let comment = '';
         i += 2;
@@ -253,6 +241,7 @@ const LexicalAnalyzerTemplate = () => {
       // Multi-line comment detection: /* */
       // =======================================
       // Comments can span multiple lines until closing */
+
       if (char === '/' && code[i + 1] === '*') {
         let comment = '/*';
         i += 2;
@@ -273,6 +262,7 @@ const LexicalAnalyzerTemplate = () => {
       // String literal detection: "text"
       // ========================================
       // Strings can contain escape sequences and embedded variable references
+
       if (char === '"') {
         let currentSegment = '';
         let startLine = line;
@@ -828,10 +818,6 @@ END`;
                 Source Code Input
               </h2>
               <div className="flex items-center gap-2">
-                <button className="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition">
-                  <Sun className="w-5 h-5 dark:hidden" />
-                  <Moon className="w-5 h-5 hidden dark:block" />
-                </button>
                 <button
                   onClick={loadSampleCode}
                   className="px-3 py-2 sm:px-4 bg-cyan-200 hover:bg-yellow-300 text-gray-700 rounded-md transition-colors text-xs sm:text-sm font-medium"
@@ -941,7 +927,7 @@ END`;
           </motion.div>
 
           <div className="col-span-2 flex justify-center">
-            <div className="mt-6 w-full max-w-3xl bg-white/70 dark:bg-slate-800/60 backdrop-blur-xl p-4 rounded-lg shadow-md border border-white/30 dark:border-slate-700">
+            <div className="mt-6 w-full max-w-full bg-white/70 dark:bg-slate-800/60 backdrop-blur-xl p-4 rounded-lg shadow-md border border-white/30 dark:border-slate-700">
               <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-slate-200 mb-3 sm:mb-4 text-center">Token Type Legend</h3>
               <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
                 {[
