@@ -14,7 +14,9 @@ const LexicalAnalyzerTemplate = () => {
   const [sourceCode, setSourceCode] = useState('');         // User's input source code
   const [tokens, setTokens] = useState([]);                 // Tokenized result from analysis
   const [analyzing, setAnalyzing] = useState(false);        // Loading state during analysis
+  const [uploadedSample, setUploadedSample] = useState(''); // Uploaded sample code
   const textareaRef = useRef(null);                         // Reference to textarea for cursor control
+  const fileInputRef = useRef(null);                        // Reference to file input for uploa
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -64,6 +66,7 @@ const LexicalAnalyzerTemplate = () => {
   // ========================================
   // Token Types for E.C.H.O Language
   // ========================================
+
   const TOKEN_TYPES = {
     // Keywords (compact)
     KEYWORD_PROGRAM: 'KW_P',
@@ -112,6 +115,7 @@ const LexicalAnalyzerTemplate = () => {
   // ========================================
   // E.C.H.O Language Keywords
   // ========================================
+
   const KEYWORDS = {
     // Program keywords
     function: TOKEN_TYPES.KEYWORD_PROGRAM,
@@ -197,6 +201,7 @@ const LexicalAnalyzerTemplate = () => {
       // Single-line comment detection: //
       // =======================================
       // Comments extend until the end of the line
+
       if (char === '/' && code[i + 1] === '/') {
         let comment = '';
         i += 2;
@@ -212,6 +217,7 @@ const LexicalAnalyzerTemplate = () => {
       // Multi-line comment detection: /* */
       // =======================================
       // Comments can span multiple lines until closing */
+
       if (char === '/' && code[i + 1] === '*') {
         let comment = '/*';
         const startLine = line;
@@ -240,6 +246,7 @@ const LexicalAnalyzerTemplate = () => {
       // String literal detection: "text"
       // ========================================
       // Strings can contain escape sequences and embedded variable references
+
       if (char === '"') {
         let currentSegment = '';
         let startLine = line;
@@ -588,7 +595,10 @@ const LexicalAnalyzerTemplate = () => {
   
   // Loads a sample E.C.H.O program into the source code textarea
   const loadSampleCode = () => {
-    const sample = `start
+    if (uploadedSample) {
+      setSourceCode(uploadedSample);
+    } else {
+      const sample = `start
 number x = 10
 decimal y = 20.5
 string name = "Alice"
@@ -608,11 +618,15 @@ end function
 
 echo "Result: @x"
 end`;
-    setSourceCode(sample);
+      setSourceCode(sample);
+    }
   };
 
 const loadComplexSample = () => {
-    const complexSample = 
+    if (uploadedSample) {
+      setSourceCode(uploadedSample);
+    } else {
+      const complexSample = 
 `START
 
 struct CustomerRecord :
@@ -668,10 +682,9 @@ youngCustomer = CustomerRecord new:
 echo "Object creation status: FAILED"
 
 END`;
-    setSourceCode(complexSample);
-};
-
-
+      setSourceCode(complexSample);
+    }
+  };
 
   // Token type to color mapping for UI display
   const getTokenTypeColor = (type) => {
@@ -730,8 +743,24 @@ END`;
   const handleClear = () => {
     setSourceCode('');
     setTokens([]);
+    setUploadedSample(null);
   };
 
+  // Handles file upload and loads the file content into source code
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result;
+        if (typeof content === 'string') {
+          setSourceCode(content);
+          setUploadedSample(content);
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
 
   // Handles Tab key press in textarea to insert tab character
   const handleKeyDown = (e) => {
@@ -817,6 +846,20 @@ END`;
                 >
                   ECHO Code
                 </button>
+                <button
+                  onClick={() => fileInputRef.current.click()}
+                  className="px-3 py-2 sm:px-4 bg-purple-200 hover:bg-purple-300 text-gray-700 rounded-md transition-colors text-xs sm:text-sm font-medium flex items-center gap-1"
+                >
+                  <Upload size={14} />
+                  Upload File
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept=".txt"
+                  style={{ display: 'none' }}
+                />
               </div>
             </div>
 
@@ -901,7 +944,7 @@ END`;
           </motion.div>
 
           <div className="col-span-2 flex justify-center">
-            <div className="mt-6 w-full max-w-3xl bg-white/70 dark:bg-slate-800/60 backdrop-blur-xl p-4 rounded-lg shadow-md border border-white/30 dark:border-slate-700">
+            <div className="mt-6 w-full max-w-full bg-white/70 dark:bg-slate-800/60 backdrop-blur-xl p-4 rounded-lg shadow-md border border-white/30 dark:border-slate-700">
               <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-slate-200 mb-3 sm:mb-4 text-center">Token Type Legend</h3>
               <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
                 {[
