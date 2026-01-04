@@ -125,6 +125,7 @@ const LexicalAnalyzerTemplate = () => {
     input: TOKEN_TYPES.KEYWORD_PROGRAM,
     return: TOKEN_TYPES.KEYWORD_RESERVED,
     struct: TOKEN_TYPES.KEYWORD_RESERVED,
+    data: TOKEN_TYPES.KEYWORD_RESERVED,
     
     // Data types
     number: TOKEN_TYPES.KEYWORD_DATATYPE,
@@ -141,7 +142,6 @@ const LexicalAnalyzerTemplate = () => {
     // Conditional keywords
     if: TOKEN_TYPES.KEYWORD_CONDITIONAL,
     else: TOKEN_TYPES.KEYWORD_CONDITIONAL,
-    elseif: TOKEN_TYPES.KEYWORD_CONDITIONAL,
     then: TOKEN_TYPES.KEYWORD_CONDITIONAL,
     switch: TOKEN_TYPES.KEYWORD_CONDITIONAL,
     case: TOKEN_TYPES.KEYWORD_CONDITIONAL,
@@ -201,16 +201,40 @@ const LexicalAnalyzerTemplate = () => {
       // Single-line comment detection: //
       // =======================================
       // Comments extend until the end of the line
+      // Note: // is also the floor division operator (Page 12)
+      // Heuristic: // is a comment if it appears at start of line or after whitespace
+      // Otherwise, if it follows a non-whitespace character, it's floor division
 
       if (char === '/' && code[i + 1] === '/') {
-        let comment = '';
-        i += 2;
-        while (i < code.length && code[i] !== '\n') {
-          comment += code[i];
-          i++;
+        // Check what comes before // to determine if it's a comment or floor division
+        // Look back to find the last non-whitespace character before //
+        let prevNonWhitespace = null;
+        let j = i - 1;
+        while (j >= 0 && (code[j] === ' ' || code[j] === '\t')) {
+          j--;
         }
-        tokenList.push({ line, type: TOKEN_TYPES.COMMENT_SINGLE, lexeme: '//' + comment });
-        continue;
+        if (j >= 0 && code[j] !== '\n' && code[j] !== '\r') {
+          prevNonWhitespace = code[j];
+        }
+        
+        // If // is at start of line or after only whitespace, it's a comment
+        // If // follows a non-whitespace character (identifier, number, delimiter, etc.), it's floor division
+        const isComment = prevNonWhitespace === null || 
+                         prevNonWhitespace === '\n' || 
+                         prevNonWhitespace === '\r';
+        
+        if (isComment) {
+          // This is a comment
+          let comment = '';
+          i += 2;
+          while (i < code.length && code[i] !== '\n') {
+            comment += code[i];
+            i++;
+          }
+          tokenList.push({ line, type: TOKEN_TYPES.COMMENT_SINGLE, lexeme: '//' + comment });
+          continue;
+        }
+        // Otherwise, fall through to operator detection (will be handled as floor division)
       }
 
       // =======================================
@@ -442,6 +466,7 @@ const LexicalAnalyzerTemplate = () => {
       // Identifier and keyword detection
       // ===================================
       // Identifiers start with letter or underscore, followed by letters, digits, or underscores
+      // Maximum length: 64 characters (Page 10)
 
       if (/[a-zA-Z_]/.test(char)) {
         let word = '';
@@ -450,6 +475,18 @@ const LexicalAnalyzerTemplate = () => {
           word += code[i];
           i++;
         }
+        
+        // Check identifier length constraint (Page 10: max 64 characters)
+        if (word.length > 64) {
+          tokenList.push({
+            line,
+            type: TOKEN_TYPES.ERROR,
+            lexeme: word,
+            message: 'Identifier exceeds maximum length of 64 characters'
+          });
+          continue;
+        }
+        
         // Check if word is a keyword (case-insensitive matching)
         const lowerWord = word.toLowerCase();
         const tokenType = KEYWORDS[lowerWord] || TOKEN_TYPES.IDENTIFIER;
@@ -489,7 +526,7 @@ const LexicalAnalyzerTemplate = () => {
       
       // ======================
       // Operator detection (whitespace-delimited). Any contiguous operator run must be a known operator; otherwise it's a single ERR.
-      const operatorChars = "<>!=&|+-*/%^";
+      const operatorChars = "<>!=&|+-*/%^?";
       if (operatorChars.includes(char)) {
         let j = i;
         while (j < code.length && operatorChars.includes(code[j])) {
@@ -497,12 +534,13 @@ const LexicalAnalyzerTemplate = () => {
         }
         const run = code.slice(i, j);
 
-        const singleOps = new Set(["<", ">", "=", "+", "-", "*", "/", "%", "^", "!"]);
+        const singleOps = new Set(["<", ">", "=", "+", "-", "*", "/", "%", "^", "!", "?"]);
         const doubleOps = new Set([
           "<=", ">=", "==", "!=",
           "++", "--",
           "+=", "-=", "*=", "/=", "%=", "^=",
-          "&&", "||"
+          "&&", "||",
+          "//"  // Floor division operator (Page 12)
         ]);
 
         if (run.length === 1 && singleOps.has(run)) {
@@ -510,6 +548,7 @@ const LexicalAnalyzerTemplate = () => {
             run === "=" ? TOKEN_TYPES.ASSIGNMENT_OP :
             (run === "<" || run === ">") ? TOKEN_TYPES.RELATIONAL_OP :
             run === "!" ? TOKEN_TYPES.LOGICAL_OP :
+            run === "?" ? TOKEN_TYPES.UNKNOWN : // Question mark - tokenized but type TBD
             TOKEN_TYPES.ARITHMETIC_OP;
           tokenList.push({ line, type, lexeme: run });
         } else if (run.length === 2 && doubleOps.has(run)) {
@@ -517,6 +556,7 @@ const LexicalAnalyzerTemplate = () => {
             ["<=", ">=", "==", "!="].includes(run) ? TOKEN_TYPES.RELATIONAL_OP :
             ["++", "--"].includes(run) ? TOKEN_TYPES.UNARY_OP :
             ["&&", "||"].includes(run) ? TOKEN_TYPES.LOGICAL_OP :
+            run === "//" ? TOKEN_TYPES.ARITHMETIC_OP : // Floor division operator (Page 12)
             TOKEN_TYPES.ASSIGNMENT_OP;
           tokenList.push({ line, type, lexeme: run });
         } else {
@@ -541,7 +581,8 @@ const LexicalAnalyzerTemplate = () => {
       const simpleDelimiters = {
         ',': TOKEN_TYPES.DELIMITER_COMMA,
         ':': TOKEN_TYPES.DELIMITER_COLON,
-        ';': TOKEN_TYPES.DELIMITER_SEMICOLON,
+        // Semicolon (;) is not allowed per spec (Page 22): "We decided to eliminate the use of semicolon"
+        // Handled separately below as ERROR
       };
 
       if (openerDelimiters[char]) {
@@ -568,6 +609,30 @@ const LexicalAnalyzerTemplate = () => {
 
       if (simpleDelimiters[char]) {
         tokenList.push({ line, type: simpleDelimiters[char], lexeme: char });
+        i++;
+        continue;
+      }
+
+      // Handle semicolon as ERROR per spec (Page 22: semicolons eliminated)
+      if (char === ';') {
+        tokenList.push({ 
+          line, 
+          type: TOKEN_TYPES.ERROR, 
+          lexeme: char,
+          message: 'Unexpected delimiter: semicolon (;) is not allowed in E.C.H.O'
+        });
+        i++;
+        continue;
+      }
+
+      // Handle backslash outside strings
+      if (char === '\\') {
+        tokenList.push({ 
+          line, 
+          type: TOKEN_TYPES.UNKNOWN, 
+          lexeme: char,
+          message: 'Backslash found outside string literal'
+        });
         i++;
         continue;
       }
