@@ -27,51 +27,99 @@
 
 ---
 
+### 🎓 Academic Project
+
+<table align="center">
+<tr>
+<td align="center">
+
+**📚 In partial fulfillment for the Course:**  
+**COSC 303 – Principles of Programming Languages**
+
+</td>
+</tr>
+<tr>
+<td align="center">
+
+🏛️ **POLYTECHNIC UNIVERSITY OF THE PHILIPPINES**  
+*College of Computer and Information Sciences*  
+📍 Sta. Mesa, Manila
+
+</td>
+</tr>
+<tr>
+<td align="center">
+
+💻 **Bachelor of Science in Computer Science 3-2**
+
+</td>
+</tr>
+</table>
+
+#### 👥 Group 5 Members
+
+<div align="center">
+
+| 👤 Name | 🎯 Role |
+|---------|---------|
+| **Jocson, Dan Louie** | 🌟 Project Leader |
+| **Baptista, Nicko Adrian** | 📝 Technical Documenter |
+| **Delos Reyes, Ariane Joy** | 📝 Technical Documenter |
+| **Martinez, Bouie** | 📝 Technical Documenter |
+| **Madelo, Mark Anthony** | 💻 Coder |
+| **Bermudez, Mark Daniel** | 💻 Coder |
+
+📅 **First Semester, Academic Year 2025-2026**
+
+</div>
+
+---
+
 </div>
 
 ## 🌟 Overview
 
-**ECHO** (Executable Code, Human Output) is a programming language designed with a focus on readability and expressiveness. The language provides a clean, intuitive syntax that makes code easier to write, read, and maintain.
+**ECHO** (Executable Code, Human Output) is a modern programming language designed for human readability. It features semicolon-free syntax, natural language noise words, explicit `start`/`end` block delimiters, and `@variable` string interpolation.
 
-This repository contains the complete implementation of the ECHO programming language, including its lexical analyzer, syntax analyzer, and comprehensive technical documentation.
+This repository contains a complete web-based development environment built with React 19 and Vite 7, featuring two analysis tools: a **Lexical Analyzer** for tokenization and a **Syntax Analyzer** for structure validation. Both provide real-time feedback with detailed error reporting.
 
 ---
 
 ## 📦 Project Contents
 
 ### 🔍 Lexical Analyzer
-A web-based React application that tokenizes ECHO source code, breaking it down into individual tokens (keywords, identifiers, literals, operators) with real-time analysis and visualization.
+A web-based React application that breaks down ECHO source code into tokens (keywords, identifiers, literals, operators, delimiters, comments). Features color-coded visualization, interactive token tables, dark/light theme support, sample code loading, and file upload capabilities with instant error detection.
 
 ### 🌳 Syntax Analyzer
-A parser that validates the grammatical structure of ECHO programs, ensuring code follows the language's syntax rules and building an abstract syntax tree (AST) for further processing.
+A validation tool that checks ECHO programs for proper structure and grammar compliance. Verifies delimiter balancing, enforces language rules (no semicolons, 64-char identifier limit, mandatory initialization), validates block nesting, and ensures required keywords. Includes an interactive error console with clickable navigation, sample test cases, and performance metrics.
 
 ### 📚 Technical Documentation
-Comprehensive documentation covering the ECHO language specification, grammar rules, syntax definitions, and implementation details for developers and language enthusiasts.
+Comprehensive in-code documentation and README files covering language specifications, token types, keywords, and implementation details. Includes sample code library with test cases demonstrating valid syntax and common errors for learning and reference.
 
 ---
 
-## 🤝 Contributing
+## 🚀 Installation & Usage
 
-Contributions are welcome! This project is designed for educational and development purposes. Feel free to:
+### Lexical Analyzer
 
-- 🐛 Report bugs
-- 💡 Suggest new features
-- 📝 Improve documentation
-- 🔧 Submit pull requests
+```bash
+cd Lexical-Analyzer
+npm install
+npm run dev
+```
 
-### How to Contribute
+Open [http://localhost:5173](http://localhost:5173) → Enter ECHO code → Click "Analyze" → View tokens
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+### Syntax Analyzer
 
----
+```bash
+cd Syntax-Analyzer
+npm install
+npm run dev
+```
 
-## 📝 License
+Open [http://localhost:5173](http://localhost:5173) → Enter ECHO code → Click "Analyze" → Review errors
 
-This project is provided as-is for educational and development use.
 
 ---
 
@@ -86,4 +134,3 @@ This project is provided as-is for educational and development use.
 *For questions or support, please open an issue on GitHub.*
 
 </div>
-
