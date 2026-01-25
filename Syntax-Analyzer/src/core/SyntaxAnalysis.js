@@ -4,7 +4,7 @@ Recursive descent parser for O(N) performance.
 Dependencies: TokenTypes, ASTBuilder
 */
 
-import { TOKEN_TYPES, isDataType, isOperator } from '../../../shared/tokenTypes.js';
+import { TOKEN_TYPES, isDataType } from '../../../shared/tokenTypes.js';
 import { buildAST } from './ASTBuilder.js';
 
 export const ERROR_CATEGORIES = {
@@ -206,7 +206,7 @@ class Analyzer {
       this.error('Program must begin with "start" keyword', ERROR_CATEGORIES.STRUCTURAL_ERROR, { grammar: GRAMMAR_RULES.PROGRAM });
     }
 
-    this.parseStatementList(true);
+    this.parseStatementList();
 
     if (!this.check(TOKEN_TYPES.KEYWORD_END)) {
        if (!this.isAtEnd()) {
@@ -224,7 +224,7 @@ class Analyzer {
 
   // --- Statement Parsing ---
 
-  parseStatementList(isTopLevel = false, isDoBlock = false) {
+  parseStatementList(isDoBlock = false) {
     while (!this.isAtEnd()) {
       const type = this.current().type;
       
