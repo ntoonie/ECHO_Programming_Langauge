@@ -61,21 +61,30 @@ Syntax-Analyzer/
 │   └── LOGO.svg              # Logo asset
 ├── src/
 │   ├── components/           # React UI components
+│   │   ├── AbstractSyntaxTree.jsx
 │   │   ├── SyntaxDashboard.jsx
 │   │   ├── TextArea.jsx
 │   │   └── ErrorConsole.jsx
 │   ├── core/                 # Language processing
+│   │   ├── ASTBuilder.js
 │   │   ├── LexicalScanner.js
-│   │   ├── SyntaxAnalyzer.js
-│   │   └── TokenTypes.js
+│   │   └── SyntaxAnalyzer.js
 │   ├── hooks/                # State management
 │   │   ├── useDashboard.js
 │   │   └── useTheme.js
-│   └── data/                 # Test cases
-│       └── codeSamples.js
-├── index.html
-├── vite.config.js
-└── package.json
+│   ├── data/                 # Test cases
+│   │   └── codeSamples.js
+│   ├── App.jsx               # Main application component
+│   ├── index.css             # Global styles
+│   └── main.jsx              # Application entry point
+├── .gitignore               # Git ignore rules
+├── README.md                # This documentation
+├── eslint.config.js         # ESLint configuration
+├── index.html               # HTML template
+├── package.json             # Dependencies and scripts
+├── postcss.config.cjs       # PostCSS configuration
+├── tailwind.config.cjs      # Tailwind CSS configuration
+└── vite.config.js           # Vite build configuration
 ```
 
 ---
