@@ -679,13 +679,7 @@ const getNodeDetails = () => {
                     </div>
                   )}
                   
-                  <div>
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Path</span>
-                    <div className="mt-1 font-mono text-xs text-gray-600 dark:text-gray-400 break-all">
-                      {safeToString(nodeDetails.path)}
-                    </div>
-                  </div>
-                </div>
+                                  </div>
               ) : (
                 <div className="text-center text-gray-400 py-8">
                   <FileText size={32} className="mx-auto mb-2 opacity-30" />
