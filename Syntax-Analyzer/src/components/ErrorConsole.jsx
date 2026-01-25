@@ -79,11 +79,6 @@ const getCategoryName = (category) => {
                 <span className="text-sm text-green-600 dark:text-green-400">
                   Your code complies with ECHO language grammar rules!
                 </span>
-                {astValid !== undefined && (
-                  <span className="text-xs text-green-600 dark:text-green-400 mt-1">
-                    AST: {astValid ? 'Valid' : 'Invalid'}
-                  </span>
-                )}
               </div>
             </div>
           )}
@@ -107,14 +102,6 @@ const getCategoryName = (category) => {
               <h3 className="text-lg font-bold text-red-800 dark:text-red-200">
                 Syntax Issues ({errors.length} errors, {warnings.length} warnings)
               </h3>
-              {astValid !== undefined && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-red-600 dark:text-red-300">AST:</span>
-                  <span className={`text-sm font-medium ${astValid ? 'text-green-600 dark:text-green-300' : 'text-red-600 dark:text-red-300'}`}>
-                    {astValid ? 'Valid' : 'Invalid'}
-                  </span>
-                </div>
-              )}
             </div>
           </div>
           
@@ -128,9 +115,6 @@ const getCategoryName = (category) => {
                   </th>
                   <th className="px-4 py-4 font-semibold text-red-900 dark:text-red-200 text-center border-r border-red-200 dark:border-red-700 whitespace-nowrap w-24">
                     Column
-                  </th>
-                  <th className="px-3 py-4 font-semibold text-red-900 dark:text-red-200 text-center border-r border-red-200 dark:border-red-700 whitespace-nowrap w-28">
-                    Category
                   </th>
                   <th className="px-6 py-4 font-semibold text-red-900 dark:text-red-200 text-left min-w-[300px]">
                     Error Description
@@ -162,14 +146,6 @@ const getCategoryName = (category) => {
                     </td>
                     <td className="px-4 py-3 text-center text-red-900 dark:text-red-200 font-bold border-r border-red-200 dark:border-red-800 whitespace-nowrap">
                       {error.column}
-                    </td>
-                    <td className="px-3 py-3 text-center border-r border-red-200 dark:border-red-800 whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-2">
-                        {getErrorIcon(error.category, error.severity)}
-                        <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                          {getCategoryName(error.category)}
-                        </span>
-                      </div>
                     </td>
                     <td className="px-6 py-3 text-left font-mono text-sm text-slate-900 dark:text-gray-200 break-words">
                       <span className={`${error.severity === 'warning' ? 'text-yellow-800 dark:text-yellow-200' : ''}`}>

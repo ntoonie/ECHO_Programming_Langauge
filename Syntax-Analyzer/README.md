@@ -113,15 +113,6 @@ end
 
 > **Tip:** Use the AST viewer to understand the hierarchical structure of your E.C.H.O code.
 
-### Error Categories Reference
-
-| Category | Description | Examples |
-|----------|-------------|----------|
-| **Lexical** | Invalid tokens or characters | Unknown symbols |
-| **Syntax** | Grammar rule violations | Missing delimiters |
-| **Structure** | Program organization errors | Missing start/end |
-| **Semantic** | Logic and type issues | Variable usage |
-
 ---
 
 > This syntax analyzer is designed as an educational tool to help students understand programming language parsing, grammar validation, and abstract syntax tree construction through interactive visualization.
