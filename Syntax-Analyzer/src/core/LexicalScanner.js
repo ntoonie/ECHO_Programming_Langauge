@@ -1,4 +1,4 @@
-import { TOKEN_TYPES, KEYWORDS } from '../../../shared/tokenTypes';
+import { TOKEN_TYPES, KEYWORDS } from '../../../shared/tokenTypes.js';
 
 /*
 Lexical Scanner – Token Analysis
@@ -65,6 +65,7 @@ export const lexicalAnalyzer = (rawCode) => {
       continue;
     }
 
+    // Comments: // ...
     if (char === '/' && code[i + 1] === '/') {
       let prevNonWhitespace = null;
       let j = i - 1;
@@ -75,7 +76,6 @@ export const lexicalAnalyzer = (rawCode) => {
         prevNonWhitespace = code[j];
       }
       
-      // Only treat '//' as comment if it starts a line to prevent conflict with division
       const isComment = prevNonWhitespace === null || 
                        prevNonWhitespace === '\n' || 
                        prevNonWhitespace === '\r';
@@ -95,6 +95,7 @@ export const lexicalAnalyzer = (rawCode) => {
       }
     }
 
+    // Comments: /* ... */
     if (char === '/' && code[i + 1] === '*') {
       let comment = '/*';
       const startLine = line;
@@ -120,6 +121,7 @@ export const lexicalAnalyzer = (rawCode) => {
       continue;
     }
 
+    // Strings
     if (char === '"') {
       let currentSegment = '';
       let startLine = line;
@@ -128,8 +130,55 @@ export const lexicalAnalyzer = (rawCode) => {
       i++;
       
       while (i < code.length && code[i] !== '"') {
-        // Handle string interpolation (@variable) by splitting into separate tokens
+        // Handle string interpolation (@variable)
         if (code[i] === '@') {
+          // Check for invalid space after @
+          if (i + 1 < code.length && code[i+1] === ' ') {
+             // Treat as literal '@' inside string content if it has a space, 
+             // but maybe we want to error here? 
+             // The prompt says: 'echo "Hello, @ user" /* Error: Space not allowed after @ */'
+             // So we should tokenizing this as an ERROR token or let the parser handle it.
+             // Best approach: Tokenize it as SIS_MARKER but with empty/invalid content so parser rejects it?
+             // OR: Tokenize as string content '@', and let the parser complain?
+             // Actually, if we treat '@ ' as just text, it validates as a string literal. 
+             // To trigger the error requested, we must detect '@ ' and fail or create a specific error token.
+             
+             // Strategy: If '@' is followed by space, emit an error token or handle logic.
+             // We'll treat it as a special INVALID_SIS token or just text. 
+             // However, to satisfy "Error: Space not allowed after @", we should probably 
+             // consume the '@' and space and emit an UNKNOWN/ERROR token.
+             
+             // BUT, if it's just text, maybe it SHOULD be valid? 
+             // The prompt implies it expects an error. 
+             // We will treat '@' followed by space as a potential SIS start that failed.
+             
+             // Let's stop the current string segment.
+             if (currentSegment.length > 0) {
+                tokenList.push({ 
+                  line: startLine,
+                  column: startColumn,
+                  type: TOKEN_TYPES.STRING_LITERAL, 
+                  lexeme: '"' + currentSegment + '"' 
+                });
+                currentSegment = '';
+             }
+
+             // Emit a specific error token for the parser to catch
+             tokenList.push({
+                line,
+                column: column,
+                type: TOKEN_TYPES.UNKNOWN, // Parser will see this inside string context? No, parser sees stream.
+                lexeme: '@ ' // Mark this specifically
+             });
+             
+             column += 2;
+             i += 2;
+             // Reset start for next segment
+             startLine = line;
+             startColumn = column;
+             continue;
+          }
+
           if (currentSegment.length > 0) {
             tokenList.push({ 
               line: startLine,
@@ -138,8 +187,6 @@ export const lexicalAnalyzer = (rawCode) => {
               lexeme: '"' + currentSegment + '"' 
             });
             currentSegment = '';
-            startLine = line;
-            startColumn = column;
           }
           
           const interpolationColumn = column;
@@ -166,6 +213,8 @@ export const lexicalAnalyzer = (rawCode) => {
           });
           
           i = j;
+          startLine = line;
+          startColumn = column;
           continue;
         }
 
@@ -194,6 +243,23 @@ export const lexicalAnalyzer = (rawCode) => {
           type: TOKEN_TYPES.STRING_LITERAL, 
           lexeme: '"' + currentSegment + '"' 
         });
+      } else {
+         if (tokenList.length > 0 && tokenList[tokenList.length - 1].type === TOKEN_TYPES.SIS_MARKER) {
+             tokenList.push({ 
+                line: startLine,
+                column: startColumn,
+                type: TOKEN_TYPES.STRING_LITERAL, 
+                lexeme: '""' 
+             });
+         } 
+         else if (tokenList.length === 0 || (tokenList.length > 0 && tokenList[tokenList.length-1].lexeme !== '"' + currentSegment + '"')) {
+             tokenList.push({ 
+                line: startLine,
+                column: startColumn,
+                type: TOKEN_TYPES.STRING_LITERAL, 
+                lexeme: '""' 
+             });
+         }
       }
       
       if (i < code.length && code[i] === '"') {
@@ -203,6 +269,8 @@ export const lexicalAnalyzer = (rawCode) => {
       continue;
     }
 
+    // Numbers (Integers & Decimals)
+    // FIX: Strictly ensure that things starting with digits are numbers.
     if (
       /\d/.test(char) ||
       ((char === '+' || char === '-') && /\d/.test(code[i + 1])) ||
@@ -249,7 +317,33 @@ export const lexicalAnalyzer = (rawCode) => {
           }
           continue;
         }
+        
+        // FIX: Identifiers cannot start with digits.
+        // If we hit a letter immediately after a number without space/op, 
+        // it's an invalid token (e.g., "1stPlace").
+        if (/[a-zA-Z_]/.test(c)) {
+            // Consume the invalid characters to prevent them being parsed as a separate identifier
+            while(i < code.length && /[a-zA-Z0-9_]/.test(code[i])) {
+                num += code[i];
+                column++;
+                i++;
+            }
+            tokenList.push({
+                line,
+                column: startColumn,
+                type: TOKEN_TYPES.UNKNOWN, // Or specific INVALID_IDENTIFIER type
+                lexeme: num
+            });
+            // Break loop to continue main loop
+            break; 
+        }
+
         break;
+      }
+
+      // If we broke because of invalid identifier chars, we already pushed a token.
+      if (tokenList.length > 0 && tokenList[tokenList.length-1].column === startColumn && tokenList[tokenList.length-1].type === TOKEN_TYPES.UNKNOWN) {
+          continue;
       }
 
       tokenList.push({
@@ -261,6 +355,7 @@ export const lexicalAnalyzer = (rawCode) => {
       continue;
     }
 
+    // Identifiers and Keywords
     if (/[a-zA-Z_]/.test(char)) {
       const startColumn = column;
       let word = '';
@@ -271,7 +366,13 @@ export const lexicalAnalyzer = (rawCode) => {
       }
       
       const lowerWord = word.toLowerCase();
-      const tokenType = KEYWORDS[lowerWord] || TOKEN_TYPES.IDENTIFIER;
+      // Use existing map, default to IDENTIFIER
+      let tokenType = KEYWORDS[lowerWord] || TOKEN_TYPES.IDENTIFIER;
+
+      // FIX: Force built-in functions to be treated as Identifiers.
+      if (['sum', 'median', 'mode', 'average', 'isEven', 'isOdd'].includes(lowerWord)) {
+        tokenType = TOKEN_TYPES.IDENTIFIER;
+      }
       
       tokenList.push({ line, column: startColumn, type: tokenType, lexeme: word });
       continue;
@@ -305,7 +406,7 @@ export const lexicalAnalyzer = (rawCode) => {
       continue;
     }
     
-    // Group consecutive operator characters then classify as single or double operators
+    // Group consecutive operator characters
     const operatorChars = "<>!=&|+-*/%^?";
     if (operatorChars.includes(char)) {
       const startColumn = column;
@@ -367,7 +468,7 @@ export const lexicalAnalyzer = (rawCode) => {
       '}': TOKEN_TYPES.DEL_RBRACE,
       ',': TOKEN_TYPES.DEL_COMMA,
       '.': TOKEN_TYPES.DEL_PERIOD,
-      ':': TOKEN_TYPES.DEL_PERIOD,
+      ':': TOKEN_TYPES.DEL_COLON,
     };
 
     if (delimiters[char]) {
@@ -377,8 +478,10 @@ export const lexicalAnalyzer = (rawCode) => {
       continue;
     }
 
+    // Explicitly handle Semicolon as UNKNOWN or SEMICOLON (if added to types)
+    // To fix duplication, we can mark it as UNKNOWN here, parser will catch it.
+    // Ideally, parser checks for ';'.
     if (char === ';') {
-      // Check for prohibited semicolons (ECHO doesn't use semicolons)
       tokenList.push({ 
         line,
         column,

@@ -1,17 +1,22 @@
+/*
+Dashboard Hook – Syntax Analyzer State Management
+
+Manages state and event logic for the syntax analyzer dashboard.
+Handles code editing, analysis, history, and file operations.
+Dependencies: React hooks, LexicalScanner, SyntaxAnalysis, tokenTypes, codeSamples
+*/
+
 import { useState, useRef, useCallback } from 'react';
 import { lexicalAnalyzer } from '../core/LexicalScanner';
-import { syntaxAnalyzer } from '../core/SyntaxAnalyzer';
-import { TOKEN_TYPES } from '../../../shared/tokenTypes';
+import { syntaxAnalyzer } from '../core/SyntaxAnalysis';
+import { TOKEN_TYPES } from '../../../shared/tokenTypes.js';
 import { getSampleById } from '../data/codeSamples';
 
-/**
- * Dashboard Hook
- * 
- * Manages state and event logic for the syntax analyzer dashboard.
- * Handles code editing, analysis, history, and file operations.
- * Dependencies: React hooks, LexicalScanner, SyntaxAnalyzer, tokenTypes, codeSamples
- */
+/*
+Dashboard hook for syntax analyzer state management
 
+@returns {Object} Dashboard state and handler functions
+*/
 export const useDashboard = () => {
   const [sourceCode, setSourceCode] = useState('');
   const [errors, setErrors] = useState([]);
@@ -32,7 +37,11 @@ export const useDashboard = () => {
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Add new code state to history for undo/redo functionality
+  /*
+  Add code to history for undo/redo functionality
+  
+  @param {String} code - Code to add to history
+  */
   const addToHistory = useCallback((code) => {
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push({ code, timestamp: Date.now() });
@@ -40,6 +49,9 @@ export const useDashboard = () => {
     setHistoryIndex(newHistory.length - 1);
   }, [history, historyIndex]);
 
+  /*
+  Undo to previous code state
+  */
   const handleUndo = useCallback(() => {
     if (historyIndex > 0) {
       const newIndex = historyIndex - 1;
@@ -48,6 +60,9 @@ export const useDashboard = () => {
     }
   }, [history, historyIndex]);
 
+  /*
+  Redo to next code state
+  */
   const handleRedo = useCallback(() => {
     if (historyIndex < history.length - 1) {
       const newIndex = historyIndex + 1;
@@ -56,17 +71,28 @@ export const useDashboard = () => {
     }
   }, [history, historyIndex]);
 
+  /*
+  Handle source code changes with history tracking
+  
+  @param {String} newCode - New source code content
+  */
   const handleSourceCodeChange = useCallback((newCode) => {
     setSourceCode(newCode);
     addToHistory(newCode);
   }, [addToHistory]);
 
-  // Handle error row click to navigate to error location
+  /*
+  Handle error row click to navigate to error location
+  
+  @param {Number} line - Line number to highlight
+  */
   const handleErrorClick = useCallback((line) => {
     setSelectedErrorLine(line);
   }, []);
 
-  // Copy code to clipboard
+  /*
+  Copy code to clipboard with tooltip feedback
+  */
   const handleCopyToClipboard = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(sourceCode);

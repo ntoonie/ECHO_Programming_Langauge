@@ -5,6 +5,7 @@
 **G = {V, T, P, S}**
 
 Where:
+
 - **V** = Set of non-terminal symbols
 - **T** = Set of terminal symbols
 - **P** = Production rules defining the syntax of ECHO language
@@ -15,23 +16,27 @@ Where:
 ## V: Non-Terminal Symbols
 
 ### Program Structure (3)
+
 - `<ECHO_program>`
-- `<stmt_list>`
-- `<stmt>`
+- `<statement_list>`
+- `<statement>`
 
 ### Declarations (4)
+
 - `<declaration_stmt>`
 - `<decl_list>`
 - `<decl_item>`
 - `<data_type>`
 
 ### Input/Output & Operations (4)
+
 - `<input_stmt>`
 - `<output_stmt>`
 - `<assignment_stmt>`
 - `<assignment_op>`
 
 ### Control Flow (8)
+
 - `<conditional_stmt>`
 - `<if_stmt>`
 - `<else_if_block>`
@@ -42,6 +47,7 @@ Where:
 - `<jump_stmt>`
 
 ### Loops (5)
+
 - `<loop_stmt>`
 - `<for_loop>`
 - `<while_loop>`
@@ -49,6 +55,7 @@ Where:
 - `<step_clause>`
 
 ### Functions (7)
+
 - `<function_def>`
 - `<param_list>`
 - `<param>`
@@ -58,6 +65,7 @@ Where:
 - `<return_type>`
 
 ### Expressions (10)
+
 - `<expression>`
 - `<logic_or>`
 - `<logic_and>`
@@ -69,7 +77,8 @@ Where:
 - `<unary>`
 - `<primary>`
 
-### Lexical (18)
+### Lexical (20)
+
 - `<identifier>`
 - `<literal>`
 - `<number_lit>`
@@ -88,12 +97,15 @@ Where:
 - `<field_list>`
 - `<field_decl>`
 - `<input_expression>`
+- `<builtin_function_call>`
+- `<builtin_name>`
 
 ---
 
 ## T: Terminal Symbols
 
 ### Keywords – Program Structure
+
 - `function`
 - `start`
 - `end`
@@ -101,6 +113,7 @@ Where:
 - `input`
 
 ### Keywords – Data Types
+
 - `number`
 - `decimal`
 - `string`
@@ -108,18 +121,30 @@ Where:
 - `list`
 
 ### Keywords – Loops
+
 - `for`
 - `while`
 - `do`
 
 ### Keywords – Conditionals
+
 - `if`
 - `else`
 - `switch`
 - `case`
 - `default`
 
+### Built-in Function Names
+
+- `sum`
+- `median`
+- `mode`
+- `average`
+- `isEven`
+- `isOdd`
+
 ### Reserved Words
+
 - `@`
 - `NULL`
 - `true`
@@ -131,11 +156,13 @@ Where:
 - `this`
 
 ### Noise Words
+
 - `with`
 - `to`
 - `by`
 
 ### Operators, Delimiters, & Whitespace
+
 - Assignment: `=`, `+=`, `-=`, `*=`, `/=`, `%=`
 - Arithmetic: `+`, `-`, `*`, `/`, `//`, `%`, `^`
 - Increment/Decrement: `++`, `--`
@@ -145,6 +172,7 @@ Where:
 - Whitespace: `<space>`, `<tab>`, `<newline>`
 
 ### Character Sets
+
 - `A-Z`, `a-z`, `0-9`
 
 ---
@@ -154,11 +182,12 @@ Where:
 ### A. LEXICAL ELEMENTS
 
 #### Character Sets
+
 ```
-<letter>        =>  A | B | C | D | E | F | G | H | I | J | K | L 
-                | M | N | O | P | Q | R | S | T | U | V | W 
-                | X | Y | Z | a | b | c | d | e | f | g | h | i | j 
-                | k | l | m | n | o | p | q | r | s | t | u | v | w 
+<letter>        =>  A | B | C | D | E | F | G | H | I | J | K | L
+                | M | N | O | P | Q | R | S | T | U | V | W
+                | X | Y | Z | a | b | c | d | e | f | g | h | i | j
+                | k | l | m | n | o | p | q | r | s | t | u | v | w
                 | x | y | z
 
 <digit>         =>  0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
@@ -172,6 +201,7 @@ Where:
 ```
 
 #### Identifiers and Noise Words
+
 ```
 <identifier>    =>  "_" { "_" } | <letter> { <letter> | <digit> | "_" }
                     (* Note: Length constrained to 1-64 characters *)
@@ -180,8 +210,9 @@ Where:
 ```
 
 #### Literals
+
 ```
-<literal>       =>  <number_lit> | <decimal_lit> | <string_lit> 
+<literal>       =>  <number_lit> | <decimal_lit> | <string_lit>
                 | <bool_lit> | <list_lit> | NULL
 
 <number_lit>    =>  <digit> { <digit> }
@@ -192,14 +223,16 @@ Where:
 ```
 
 #### String Insertion System (SIS)
+
 ```
 <string_lit>        =>  '"' { <string_content> } '"'
 
-<string_content>    =>  <letter> | <digit> | <operator> 
+<string_content>    =>  <letter> | <digit> | <operator>
                     | <special_char> | " " | "@" <identifier>
 ```
 
 #### Lists
+
 ```
 <list_lit>      =>  "[" [ <array_elements> ] "]"
 
@@ -222,9 +255,10 @@ Where:
                 | <input_stmt>
                 | <output_stmt>
                 | <conditional_stmt>
-                | <loop_stmt> 
+                | <loop_stmt>
                 | <function_def>
                 | <function_call>
+                | <builtin_function_call>
                 | <jump_stmt>
 ```
 
@@ -249,7 +283,7 @@ Where:
 
 <exponential>   =>  <unary> { "^" <unary> }
 
-<unary>         =>  ( "!" | "+" | "-" | "++" | "--" ) <unary> 
+<unary>         =>  ( "!" | "+" | "-" | "++" | "--" ) <unary>
                 | <primary>
 
 <primary>       =>  <identifier> | <literal>
@@ -319,11 +353,11 @@ Where:
 
 <string_lit>    =>  '"' { <string_content> } '"'
 
-<string_content> => <letter> 
-                | <digit> 
-                | <operator> 
-                | <special_char> 
-                | " " 
+<string_content> => <letter>
+                | <digit>
+                | <operator>
+                | <special_char>
+                | " "
                 | "@" <identifier>
 ```
 
@@ -332,10 +366,10 @@ Where:
 ### H. CONDITIONAL STATEMENTS
 
 ```
-<conditional_stmt> => <if_stmt> 
-                | <if_else_stmt> 
-                | <if_elseif_else_stmt> 
-                | <nested_if_stmt> 
+<conditional_stmt> => <if_stmt>
+                | <if_else_stmt>
+                | <if_elseif_else_stmt>
+                | <nested_if_stmt>
                 | <switch_stmt>
 
 <if_stmt>       =>  "if" <expression> <statement_list> "end" "if"
@@ -373,7 +407,7 @@ Where:
                 | <while_loop>
                 | <do_while_loop>
 
-<for_loop>      =>  "for" <identifier> "=" <expression> "to" <expression> 
+<for_loop>      =>  "for" <identifier> "=" <expression> "to" <expression>
                     [ <step_clause> ]
                     <statement_list>
                     "end" "for"
@@ -431,6 +465,11 @@ Where:
 
 <field_decl>    =>  <data_type> <identifier>
                 | <data_type> <identifier> "=" <expression>
+                | <schema_binding>
+
+<schema_binding> =>  <identifier> ":" <data_type> [ <binding_clause> ]
+
+<binding_clause> =>  "(" <identifier> ")"
 ```
 
 ---
@@ -458,6 +497,23 @@ Where:
                 | <special_char>
                 | " "
                 | "@" <identifier>
+```
+
+---
+
+### N. BUILT-IN FUNCTION CALLS
+
+```
+<builtin_function_call> => <builtin_name> "(" [ <arg_list> ] ")"
+
+<builtin_name>      => sum
+                    | median
+                    | mode
+                    | average
+                    | isEven
+                    | isOdd
+
+<arg_list>          => <expression> { "," <expression> }
 ```
 
 ---
@@ -493,18 +549,18 @@ S = { <ECHO_program> }
    - Logical AND (`&&`)
    - Logical OR (`||`)
 
-2. **Identifier Constraints**: 
+2. **Identifier Constraints**:
    - Length: 1-64 characters
    - Can start with underscore or letter
    - Can contain letters, digits, and underscores
 
-3. **String Insertion System (SIS)**: 
+3. **String Insertion System (SIS)**:
    - Use `@identifier` within string literals to insert variable values
 
-4. **List Access**: 
+4. **List Access**:
    - Zero-indexed array access using `identifier[expression]`
 
-5. **Function Definitions**: 
+5. **Function Definitions**:
    - Functions can have an optional return type
    - Functions without return type are void functions
    - Return statement is required for functions with return type
