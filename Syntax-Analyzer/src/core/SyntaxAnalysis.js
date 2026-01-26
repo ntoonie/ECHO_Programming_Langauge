@@ -2,7 +2,6 @@
 ECHO Language Syntax Analyzer
 
 Implements a recursive descent parser to validate ECHO language syntax, grammar, and basic semantics (types, scoping).
-It operates with O(N) performance and recovers from errors using panic mode synchronization.
 Dependencies: TokenTypes, ASTBuilder.
 */
 
