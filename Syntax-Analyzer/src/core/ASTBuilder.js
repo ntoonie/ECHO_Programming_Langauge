@@ -728,6 +728,11 @@ class ASTParser {
     
     if (this.check(TOKEN_TYPES.DEL_LBRACK)) return this.parseListLiteral();
     
+    // Built-in functions in expressions (e.g., assignments: decimal avg = average(nums))
+    if (this.isBuiltinToken(this.peek()?.type)) {
+      return this.parseBuiltinFunctionCall();
+    }
+    
     if (this.match(TOKEN_TYPES.IDENTIFIER)) {
       return this.createNode(AST_NODE_TYPES.IDENTIFIER, { token: this.previous(), name: this.previous().lexeme });
     }

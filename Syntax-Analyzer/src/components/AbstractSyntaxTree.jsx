@@ -9,7 +9,7 @@ import React, { memo, useState, useCallback} from 'react';
 import { 
   FileText, ChevronRight, ChevronDown, Code, Braces, 
   Package, Square, Layers, GitBranch, Terminal, 
-  Type, Box, List as ListIcon, Play
+  Type, Box, List as ListIcon, Play, Zap
 } from 'lucide-react';
 
 /* AST Configuration
@@ -60,7 +60,7 @@ const AST_CONFIG = {
   RETURN_TYPE: { color: 'text-purple-500 dark:text-purple-300', icon: Type, children: ['dataType'] },
   
   // Built-in Functions
-  BUILTIN_FUNCTION_CALL: { color: 'text-fuchsia-600 dark:text-fuchsia-400', icon: Code, children: ['builtin', 'arguments'] },
+  BUILTIN_FUNCTION_CALL: { color: 'text-fuchsia-600 dark:text-fuchsia-400', icon: Zap, children: ['builtin', 'arguments'] },
   BUILTIN_NAME: { color: 'text-fuchsia-500 dark:text-fuchsia-300', icon: Square, children: [] },
 
   // Expressions & Ops

@@ -360,12 +360,6 @@ class Lexer {
     const lowerWord = word.toLowerCase();
     let type = KEYWORDS[lowerWord] || TOKEN_TYPES.IDENTIFIER;
 
-    // Override: Treat built-ins as identifiers
-    const builtIns = ['sum', 'median', 'mode', 'average', 'isEven', 'isOdd'];
-    if (builtIns.includes(lowerWord)) {
-      type = TOKEN_TYPES.IDENTIFIER;
-    }
-
     this.addToken(type, word, startLine, startColumn);
   }
 

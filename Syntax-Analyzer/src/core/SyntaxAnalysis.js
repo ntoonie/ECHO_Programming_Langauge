@@ -795,7 +795,14 @@ class Analyzer {
       return 'null';
     }
 
-    // 2. Identifiers & Calls
+    // 2. Built-in Functions (handled before identifiers to give priority)
+    if (this.isBuiltin(token)) {
+        this.advance();
+        this.parseFunctionArgs();
+        return this.getBuiltinReturnType(token.lexeme);
+    }
+
+    // 3. Identifiers & User-defined Function Calls
     if (token.type === TOKEN_TYPES.IDENTIFIER) {
       this.validateIdentifierLength(token);
       this.advance();
@@ -818,7 +825,7 @@ class Analyzer {
       return this.symbolTable.has(token.lexeme) ? this.symbolTable.get(token.lexeme).type : 'unknown';
     }
 
-    // 3. Grouping
+    // 4. Grouping
     if (this.match(TOKEN_TYPES.DEL_LPAREN)) {
       const type = this.parseExpression();
       if (!this.match(TOKEN_TYPES.DEL_RPAREN)) {
@@ -827,7 +834,7 @@ class Analyzer {
       return type;
     }
 
-    // 4. List Literal
+    // 5. List Literal
     if (this.match(TOKEN_TYPES.DEL_LBRACK)) {
         if (!this.check(TOKEN_TYPES.DEL_RBRACK)) {
             do { this.parseExpression(); } while (this.match(TOKEN_TYPES.DEL_COMMA));
@@ -837,13 +844,6 @@ class Analyzer {
             if (this.check(TOKEN_TYPES.DEL_RPAREN)) this.advance();
         }
         return 'list';
-    }
-
-    // 5. Built-ins
-    if (this.isBuiltin(token)) {
-        this.advance();
-        this.parseFunctionArgs();
-        return 'number'; // Most built-ins return numbers (sum, avg, etc)
     }
 
     this.error(`Unexpected token in expression: ${token.lexeme}`);
@@ -972,12 +972,26 @@ class Analyzer {
   isBuiltin(tokenOrType) {
       if (!tokenOrType) return false;
       const lexeme = tokenOrType.lexeme || (typeof tokenOrType === 'string' ? tokenOrType : '');
-      if (['sum', 'median', 'mode', 'average', 'isEven', 'isOdd'].includes(lexeme)) {
+      if (['sum', 'median', 'mode', 'average', 'iseven', 'isodd'].includes(lexeme.toLowerCase())) {
           return true;
       }
       const type = tokenOrType.type || tokenOrType;
       return [TOKEN_TYPES.BUILTIN_SUM, TOKEN_TYPES.BUILTIN_MEDIAN, TOKEN_TYPES.BUILTIN_MODE, 
            TOKEN_TYPES.BUILTIN_AVERAGE, TOKEN_TYPES.BUILTIN_ISEVEN, TOKEN_TYPES.BUILTIN_ISODD].includes(type);
+  }
+
+  getBuiltinReturnType(builtinName) {
+      const lowerName = builtinName.toLowerCase();
+      // Mathematical functions return number/decimal
+      if (['sum', 'median', 'mode', 'average'].includes(lowerName)) {
+          return 'number';
+      }
+      // Boolean functions return boolean
+      if (['iseven', 'isodd'].includes(lowerName)) {
+          return 'boolean';
+      }
+      // Default to unknown for any other built-ins
+      return 'unknown';
   }
 }
 
