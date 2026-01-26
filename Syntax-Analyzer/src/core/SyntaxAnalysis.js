@@ -10,14 +10,6 @@ import { buildAST } from './ASTBuilder.js';
 
 // --- Constants & Configuration ---
 
-export const ERROR_CATEGORIES = {
-  SYNTAX_ERROR: 'SYNTAX_ERROR',
-  GRAMMAR_ERROR: 'GRAMMAR_ERROR',
-  SEMANTIC_ERROR: 'SEMANTIC_ERROR',
-  STRUCTURAL_ERROR: 'STRUCTURAL_ERROR',
-  TYPE_ERROR: 'TYPE_ERROR',
-  REFERENCE_ERROR: 'REFERENCE_ERROR'
-};
 
 const GRAMMAR_RULES = {
   PROGRAM: '<ECHO_program> => "start" <statement_list> "end"',
@@ -88,9 +80,9 @@ class Analyzer {
   // Error Handling & Recovery
   // =========================================================================
 
-  error(message, category = ERROR_CATEGORIES.SYNTAX_ERROR, context = {}) {
+  error(message, context = {}) {
     // Suppress secondary errors during panic mode
-    if (this.panicMode && category !== ERROR_CATEGORIES.STRUCTURAL_ERROR) return;
+    if (this.panicMode) return;
 
     const token = context.token || this.current() || this.tokens[this.tokens.length - 1];
     const line = token ? token.line : 1;
@@ -106,7 +98,6 @@ class Analyzer {
         line,
         column,
         message,
-        category,
         severity: 'error',
         timestamp: new Date().toISOString(),
         context
@@ -122,7 +113,6 @@ class Analyzer {
       line: token ? token.line : 1,
       column: token ? (token.column || 1) : 1,
       message,
-      category: ERROR_CATEGORIES.SEMANTIC_ERROR,
       severity: 'warning',
       context
     });
@@ -179,13 +169,13 @@ class Analyzer {
     // Allow forward reference for functions (hoisting-like behavior)
     if (!this.symbolTable.has(name)) {
        if (this.peek()?.type === TOKEN_TYPES.DEL_LPAREN) return; 
-       this.error(`Variable '${name}' is used but not declared.`, ERROR_CATEGORIES.REFERENCE_ERROR, { token });
+       this.error(`Variable '${name}' is used but not declared.`, { token });
        return;
     }
 
     const entry = this.symbolTable.get(name);
     if (!entry.initialized) {
-        this.error(`Variable '${name}' is used but has not been initialized.`, ERROR_CATEGORIES.REFERENCE_ERROR, { token });
+        this.error(`Variable '${name}' is used but has not been initialized.`, { token });
     }
   }
 
@@ -195,7 +185,7 @@ class Analyzer {
     const identifier = lexeme.startsWith('@') ? lexeme.substring(1) : lexeme;
     
     if (identifier.length > 64) {
-      this.error(`Identifier '${identifier}' exceeds maximum length of 64 characters`, ERROR_CATEGORIES.SYNTAX_ERROR);
+      this.error(`Identifier '${identifier}' exceeds maximum length of 64 characters`);
     }
   }
 
@@ -206,7 +196,7 @@ class Analyzer {
     // Implicit conversion: Number -> Decimal is usually allowed
     if (expected === 'decimal' && actual === 'number') return;
     
-    this.error(`Type Error: Cannot assign '${actual}' to variable of type '${expected}'`, ERROR_CATEGORIES.TYPE_ERROR);
+    this.error(`Type Error: Cannot assign '${actual}' to variable of type '${expected}'`);
   }
 
   // =========================================================================
@@ -215,12 +205,12 @@ class Analyzer {
 
   analyzeProgram() {
     if (!this.tokens.length) {
-      this.error('Empty program', ERROR_CATEGORIES.STRUCTURAL_ERROR);
+      this.error('Empty program');
       return;
     }
 
     if (!this.match(TOKEN_TYPES.KEYWORD_START)) {
-      this.error('Program must begin with "start" keyword', ERROR_CATEGORIES.STRUCTURAL_ERROR, { grammar: GRAMMAR_RULES.PROGRAM });
+      this.error('Program must begin with "start" keyword');
     }
 
     this.parseStatementList();
@@ -228,14 +218,14 @@ class Analyzer {
     if (!this.check(TOKEN_TYPES.KEYWORD_END)) {
        const unexpected = this.current();
        if (unexpected) {
-          this.error(`Unexpected token '${unexpected.lexeme}'. Expected statement or 'end'.`, ERROR_CATEGORIES.SYNTAX_ERROR);
+          this.error(`Unexpected token '${unexpected.lexeme}'. Expected statement or 'end'.`);
        } else {
-          this.error('Program must end with "end" keyword', ERROR_CATEGORIES.STRUCTURAL_ERROR, { grammar: GRAMMAR_RULES.PROGRAM });
+          this.error('Program must end with "end" keyword');
        }
     } else {
       this.advance();
       if (!this.isAtEnd()) {
-        this.error('Unexpected tokens after "end" keyword', ERROR_CATEGORIES.STRUCTURAL_ERROR);
+        this.error('Unexpected tokens after "end" keyword');
       }
     }
   }
@@ -315,9 +305,9 @@ class Analyzer {
       
       case TOKEN_TYPES.UNKNOWN:
         if (token.lexeme === ';') {
-            this.error('Semicolons are not used in ECHO. Use newlines.', ERROR_CATEGORIES.SYNTAX_ERROR);
+        this.error('Semicolons are not used in ECHO. Use newlines.');
         } else {
-            this.error(`Unknown token: ${token.lexeme}`, ERROR_CATEGORIES.SYNTAX_ERROR);
+            this.error(`Unknown token: ${token.lexeme}`);
         }
         this.advance();
         return;
@@ -328,7 +318,7 @@ class Analyzer {
       return;
     }
 
-    this.error(`Unexpected token starting statement: '${token.lexeme}'`, ERROR_CATEGORIES.SYNTAX_ERROR);
+    this.error(`Unexpected token starting statement: '${token.lexeme}'`);
     this.advance();
   }
 
@@ -339,7 +329,7 @@ class Analyzer {
     do {
       const idToken = this.match(TOKEN_TYPES.IDENTIFIER);
       if (!idToken) {
-        this.error('Expected identifier in declaration', ERROR_CATEGORIES.SYNTAX_ERROR);
+        this.error('Expected identifier in declaration');
         return; 
       }
       
@@ -356,10 +346,10 @@ class Analyzer {
       // 2. Array Size
       else if (this.match(TOKEN_TYPES.DEL_LBRACK)) {
         if (!this.match(TOKEN_TYPES.NUMBER_LITERAL)) {
-           this.error('Array declaration requires a number literal for size', ERROR_CATEGORIES.SYNTAX_ERROR);
+           this.error('Array declaration requires a number literal for size');
         }
         if (!this.match(TOKEN_TYPES.DEL_RBRACK)) {
-           this.error('Expected "]" after array size', ERROR_CATEGORIES.SYNTAX_ERROR);
+           this.error('Expected "]" after array size');
         }
         initialized = true;
       }
@@ -380,11 +370,11 @@ class Analyzer {
       this.parseExpression();
       
       if (!this.match(TOKEN_TYPES.DEL_RBRACK)) {
-        this.error('Expected "]" after list index', ERROR_CATEGORIES.SYNTAX_ERROR);
+        this.error('Expected "]" after list index');
       }
       
       if (!this.isAssignmentOp(this.current())) {
-        this.error('Expected assignment operator after list access', ERROR_CATEGORIES.SYNTAX_ERROR);
+        this.error('Expected assignment operator after list access');
       }
       this.advance();
       this.parseExpression();
@@ -416,19 +406,19 @@ class Analyzer {
       return;
     }
 
-    this.error(`Unexpected token '${this.current()?.lexeme}' after identifier '${idToken.lexeme}'`, ERROR_CATEGORIES.SYNTAX_ERROR);
+    this.error(`Unexpected token '${this.current()?.lexeme}' after identifier '${idToken.lexeme}'`);
     this.advance();
   }
 
   parseInputExpression() {
     this.advance();
     if (!this.match(TOKEN_TYPES.DEL_LPAREN)) {
-      this.error('Expected "(" after input', ERROR_CATEGORIES.SYNTAX_ERROR, { grammar: GRAMMAR_RULES.INPUT });
+      this.error('Expected "(" after input');
       return;
     }
 
     if (!isDataType(this.current()?.type)) {
-      this.error('Expected data type as first argument to input()', ERROR_CATEGORIES.TYPE_ERROR);
+      this.error('Expected data type as first argument to input()');
     } else {
       this.advance();
     }
@@ -438,7 +428,7 @@ class Analyzer {
     }
 
     if (!this.match(TOKEN_TYPES.DEL_RPAREN)) {
-      this.error('Expected ")" to close input statement', ERROR_CATEGORIES.SYNTAX_ERROR);
+      this.error('Expected ")" to close input statement');
     }
   }
 
@@ -446,7 +436,7 @@ class Analyzer {
     this.advance();
     const nextToken = this.current();
     if (!nextToken || !this.isValidExpressionStart(nextToken)) {
-        this.error(`Expected expression after 'echo'`, ERROR_CATEGORIES.SYNTAX_ERROR);
+        this.error(`Expected expression after 'echo'`);
         return; 
     }
     this.parseExpression();
@@ -495,19 +485,19 @@ class Analyzer {
     
     const idToken = this.match(TOKEN_TYPES.IDENTIFIER);
     if (!idToken) {
-      this.error('Expected identifier after "for"', ERROR_CATEGORIES.SYNTAX_ERROR, { grammar: GRAMMAR_RULES.FOR });
+      this.error('Expected identifier after "for"');
     } else {
       this.validateIdentifierLength(idToken);
       this.declareVariable(idToken.lexeme, 'number', true);
     }
 
     if (!this.match(TOKEN_TYPES.OP_ASSIGN)) {
-      this.error('Expected "=" in for loop initialization', ERROR_CATEGORIES.SYNTAX_ERROR);
+      this.error('Expected "=" in for loop initialization');
     }
     
     this.parseExpression();
     if (!this.match(TOKEN_TYPES.NOISE_TO)) {
-      this.error('Expected "to" in for loop', ERROR_CATEGORIES.SYNTAX_ERROR);
+      this.error('Expected "to" in for loop');
     }
     this.parseExpression();
     
@@ -536,7 +526,7 @@ class Analyzer {
     this.parseStatementList(true); 
     
     if (!this.match(TOKEN_TYPES.KEYWORD_WHILE)) {
-      this.error('Expected "while" after do block statements', ERROR_CATEGORIES.SYNTAX_ERROR, { grammar: GRAMMAR_RULES.DO_WHILE });
+      this.error('Expected "while" after do block statements');
     }
     this.parseExpression();
     this.consumeEndKeyword('do', GRAMMAR_RULES.DO_WHILE);
@@ -556,27 +546,27 @@ class Analyzer {
     
     const idToken = this.match(TOKEN_TYPES.IDENTIFIER);
     if (!idToken) {
-      this.error('Expected function name', ERROR_CATEGORIES.SYNTAX_ERROR, { grammar: GRAMMAR_RULES.FUNCTION });
+      this.error('Expected function name');
     } else {
       this.validateIdentifierLength(idToken);
       this.declareVariable(idToken.lexeme, 'function', true);
     }
 
-    if (!this.match(TOKEN_TYPES.DEL_LPAREN)) this.error('Expected "(" after function name', ERROR_CATEGORIES.SYNTAX_ERROR);
+    if (!this.match(TOKEN_TYPES.DEL_LPAREN)) this.error('Expected "(" after function name');
 
     // Params
     if (!this.check(TOKEN_TYPES.DEL_RPAREN)) {
       do {
         let typeToken = null;
         if (!isDataType(this.current()?.type)) {
-          this.error('Expected parameter data type', ERROR_CATEGORIES.SYNTAX_ERROR);
+          this.error('Expected parameter data type');
         } else {
           typeToken = this.advance();
         }
         
         const paramId = this.match(TOKEN_TYPES.IDENTIFIER);
         if (!paramId) {
-          this.error('Expected parameter name', ERROR_CATEGORIES.SYNTAX_ERROR);
+          this.error('Expected parameter name');
         } else {
           this.validateIdentifierLength(paramId);
           if (typeToken && paramId) {
@@ -586,7 +576,7 @@ class Analyzer {
       } while (this.match(TOKEN_TYPES.DEL_COMMA));
     }
 
-    if (!this.match(TOKEN_TYPES.DEL_RPAREN)) this.error('Expected ")" after parameters', ERROR_CATEGORIES.SYNTAX_ERROR);
+    if (!this.match(TOKEN_TYPES.DEL_RPAREN)) this.error('Expected ")" after parameters');
 
     this.parseStatementList();
     this.consumeEndKeyword('function', GRAMMAR_RULES.FUNCTION);
@@ -596,19 +586,19 @@ class Analyzer {
   parseDataStruct() {
     this.advance();
     if (!this.match(TOKEN_TYPES.RESERVED_STRUCT)) {
-      this.error('Expected "struct" after "data"', ERROR_CATEGORIES.SYNTAX_ERROR, { grammar: GRAMMAR_RULES.DATA_STRUCT });
+      this.error('Expected "struct" after "data"');
       return;
     }
     
     const idToken = this.match(TOKEN_TYPES.IDENTIFIER);
     if (!idToken) {
-      this.error('Expected struct name', ERROR_CATEGORIES.SYNTAX_ERROR);
+      this.error('Expected struct name');
     } else {
       this.validateIdentifierLength(idToken);
       this.declareVariable(idToken.lexeme, 'struct', true);
     }
 
-    if (!this.match(TOKEN_TYPES.DEL_LBRACE)) this.error('Expected "{" start struct body', ERROR_CATEGORIES.SYNTAX_ERROR);
+    if (!this.match(TOKEN_TYPES.DEL_LBRACE)) this.error('Expected "{" start struct body');
 
     // Field Definitions
     while (!this.check(TOKEN_TYPES.DEL_RBRACE) && !this.isAtEnd()) {
@@ -622,7 +612,7 @@ class Analyzer {
           this.advance();
           
           if (!isDataType(this.current()?.type)) {
-              this.error(`Expected data type in binding, found '${this.current()?.lexeme}'`, ERROR_CATEGORIES.SYNTAX_ERROR);
+              this.error(`Expected data type in binding, found '${this.current()?.lexeme}'`);
           } else {
               this.advance(); 
           }
@@ -630,8 +620,8 @@ class Analyzer {
           if (this.check(TOKEN_TYPES.DEL_LPAREN)) {
              this.advance(); 
              const funcId = this.match(TOKEN_TYPES.IDENTIFIER);
-             if (!funcId) this.error('Expected function identifier in binding clause', ERROR_CATEGORIES.SYNTAX_ERROR);
-             if (!this.match(TOKEN_TYPES.DEL_RPAREN)) this.error('Expected closing ")" in binding clause', ERROR_CATEGORIES.SYNTAX_ERROR);
+             if (!funcId) this.error('Expected function identifier in binding clause');
+             if (!this.match(TOKEN_TYPES.DEL_RPAREN)) this.error('Expected closing ")" in binding clause');
           }
       } 
       // Field Declaration: type id = val
@@ -639,7 +629,7 @@ class Analyzer {
           const fieldType = this.advance().lexeme;
           const fieldId = this.match(TOKEN_TYPES.IDENTIFIER);
           if (!fieldId) {
-              this.error('Expected field name', ERROR_CATEGORIES.SYNTAX_ERROR);
+              this.error('Expected field name');
           } else {
               this.validateIdentifierLength(fieldId);
               if (this.match(TOKEN_TYPES.OP_ASSIGN)) {
@@ -649,12 +639,12 @@ class Analyzer {
           }
       } else {
           if (this.match(TOKEN_TYPES.DEL_COMMA)) continue;
-          this.error(`Unexpected token in struct definition: '${this.current()?.lexeme}'`, ERROR_CATEGORIES.SYNTAX_ERROR);
+          this.error(`Unexpected token in struct definition: '${this.current()?.lexeme}'`);
           this.advance();
       }
     }
 
-    if (!this.match(TOKEN_TYPES.DEL_RBRACE)) this.error('Expected "}" to close struct', ERROR_CATEGORIES.SYNTAX_ERROR);
+    if (!this.match(TOKEN_TYPES.DEL_RBRACE)) this.error('Expected "}" to close struct');
   }
 
   parseJump() {
@@ -662,14 +652,14 @@ class Analyzer {
     
     if (type === TOKEN_TYPES.RESERVED_RETURN) {
       if (this.functionDepth === 0) {
-        this.error('Return statements are only allowed inside functions', ERROR_CATEGORIES.SEMANTIC_ERROR);
+        this.error('Return statements are only allowed inside functions');
       }
       if (this.current() && this.isValidExpressionStart(this.current())) {
         this.parseExpression();
       }
     } else {
       if (this.loopDepth === 0) {
-         this.error(`${type} statement must be inside a loop`, ERROR_CATEGORIES.SEMANTIC_ERROR);
+         this.error(`${type} statement must be inside a loop`);
       }
     }
   }
@@ -820,7 +810,7 @@ class Analyzer {
         this.checkVariableUsage(token);
         this.advance();
         this.parseExpression();
-        if (!this.match(TOKEN_TYPES.DEL_RBRACK)) this.error('Expected "]" in list access', ERROR_CATEGORIES.SYNTAX_ERROR);
+        if (!this.match(TOKEN_TYPES.DEL_RBRACK)) this.error('Expected "]" in list access');
         return 'unknown';
       }
       
@@ -832,7 +822,7 @@ class Analyzer {
     if (this.match(TOKEN_TYPES.DEL_LPAREN)) {
       const type = this.parseExpression();
       if (!this.match(TOKEN_TYPES.DEL_RPAREN)) {
-        this.error('Expected ")" after expression', ERROR_CATEGORIES.SYNTAX_ERROR);
+        this.error('Expected ")" after expression');
       }
       return type;
     }
@@ -843,7 +833,7 @@ class Analyzer {
             do { this.parseExpression(); } while (this.match(TOKEN_TYPES.DEL_COMMA));
         }
         if (!this.match(TOKEN_TYPES.DEL_RBRACK)) {
-            this.error('Expected "]" to close list literal', ERROR_CATEGORIES.SYNTAX_ERROR);
+            this.error('Expected "]" to close list literal');
             if (this.check(TOKEN_TYPES.DEL_RPAREN)) this.advance();
         }
         return 'list';
@@ -856,7 +846,7 @@ class Analyzer {
         return 'number'; // Most built-ins return numbers (sum, avg, etc)
     }
 
-    this.error(`Unexpected token in expression: ${token.lexeme}`, ERROR_CATEGORIES.SYNTAX_ERROR);
+    this.error(`Unexpected token in expression: ${token.lexeme}`);
     this.advance();
     return 'unknown';
   }
@@ -882,7 +872,7 @@ class Analyzer {
     }
     
     if (lastToken.type === TOKEN_TYPES.STRING_LITERAL && !lastToken.lexeme.endsWith('"')) {
-        this.error('Unterminated string literal', ERROR_CATEGORIES.SYNTAX_ERROR);
+        this.error('Unterminated string literal');
     }
   }
 
@@ -894,7 +884,7 @@ class Analyzer {
       } while (this.match(TOKEN_TYPES.DEL_COMMA));
     }
     if (!this.match(TOKEN_TYPES.DEL_RPAREN)) {
-      this.error('Expected ")" after function arguments', ERROR_CATEGORIES.SYNTAX_ERROR);
+      this.error('Expected ")" after function arguments');
     }
   }
 
@@ -905,7 +895,7 @@ class Analyzer {
 
   parseFunctionArgs() {
     if (!this.match(TOKEN_TYPES.DEL_LPAREN)) {
-        this.error('Expected "(" after function name', ERROR_CATEGORIES.SYNTAX_ERROR);
+        this.error('Expected "(" after function name');
     }
     if (!this.check(TOKEN_TYPES.DEL_RPAREN)) {
       do {
@@ -913,7 +903,7 @@ class Analyzer {
       } while (this.match(TOKEN_TYPES.DEL_COMMA));
     }
     if (!this.match(TOKEN_TYPES.DEL_RPAREN)) {
-      this.error('Expected ")" after arguments', ERROR_CATEGORIES.SYNTAX_ERROR);
+      this.error('Expected ")" after arguments');
     }
   }
 
@@ -924,7 +914,7 @@ class Analyzer {
         this.match(TOKEN_TYPES.RESERVED_FALSE)) {
         return;
     }
-    this.error('Expected literal value', ERROR_CATEGORIES.SYNTAX_ERROR);
+    this.error('Expected literal value');
   }
 
   // =========================================================================
@@ -952,7 +942,7 @@ class Analyzer {
                 this.advance();
                 return;
             } else {
-                this.error(`Expected "${blockType}" after "end"`, ERROR_CATEGORIES.STRUCTURAL_ERROR, { grammar: grammarContext });
+                this.error(`Expected "${blockType}" after "end"`);
                 return;
             }
         } else {
@@ -960,7 +950,7 @@ class Analyzer {
              return;
         }
     }
-    this.error(`Expected "end" to close ${blockType} block`, ERROR_CATEGORIES.STRUCTURAL_ERROR, { grammar: grammarContext });
+    this.error(`Expected "end" to close ${blockType} block`);
   }
 
   isAssignmentOp(token) {
@@ -1013,7 +1003,7 @@ export const syntaxAnalyzer = (tokens) => {
       astResult = buildAST(cleanTokens);
       
       if (!astResult) {
-          analyzer.error('Internal AST construction failed despite valid syntax.', ERROR_CATEGORIES.GRAMMAR_ERROR);
+          analyzer.error('Internal AST construction failed despite valid syntax.');
       } else if (astResult.errors && astResult.errors.length > 0) {
           astResult.errors.forEach(e => analyzer.errors.push(e));
       }
